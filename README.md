@@ -3,11 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>集中力分析シミュレーションタイマー</title>
-  <!-- 🎉 紙吹雪アニメーション用ライブラリ -->
+  <title>本物AI顔認識 宿題集中タイマー</title>
+  <!-- 🎉 クラッカー紙吹雪 -->
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-  <!-- 📈 グラフ描画用ライブラリ (Chart.js) -->
+  <!-- 📈 リアルタイムグラフ (Chart.js) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- 🤖 MediaPipe FaceMesh & Camera Utils (リアルタイムAI顔認識) -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+
   <style>
     * {
       box-sizing: border-box;
@@ -27,53 +32,103 @@
     .timer-card {
       background: #1e293b;
       border-radius: 24px;
-      padding: 36px 28px;
+      padding: 28px 24px;
       width: 100%;
-      max-width: 500px;
+      max-width: 480px;
       text-align: center;
       box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
       border: 2px solid #334155;
-      transition: all 0.3s ease;
     }
     h1 {
-      font-size: 1.4rem;
-      margin-bottom: 16px;
+      font-size: 1.3rem;
+      margin-bottom: 12px;
       color: #93c5fd;
       letter-spacing: 0.05em;
     }
+    /* 顔ランドマーク描画領域（実映像は非表示） */
+    .face-container {
+      position: relative;
+      width: 100%;
+      height: 220px;
+      background: #090d16;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid #334155;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #faceCanvas {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    #webcamVideo {
+      display: none; /* ビデオ映像自体は絶対に非表示 */
+    }
+    .status-badge {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 4px 14px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid #475569;
+      color: #38bdf8;
+      backdrop-filter: blur(4px);
+      white-space: nowrap;
+    }
+
     .display {
-      font-size: 4.8rem;
+      font-size: 4.5rem;
       font-weight: 800;
       font-family: 'Courier New', Courier, monospace;
-      margin: 10px 0;
+      margin: 4px 0;
       color: #4ade80;
       transition: color 0.3s ease;
     }
     .interval-badge {
       display: inline-block;
-      padding: 6px 16px;
-      border-radius: 20px;
+      padding: 4px 14px;
+      border-radius: 16px;
       background: #334155;
-      font-size: 0.95rem;
+      font-size: 0.85rem;
       font-weight: 600;
-      margin-bottom: 24px;
-      color: #f1f5f9;
+      margin-bottom: 16px;
+      color: #cbd5e1;
     }
+
+    /* グラフ描画エリア */
+    .chart-container {
+      width: 100%;
+      height: 110px;
+      margin-bottom: 16px;
+      background: #0f172a;
+      padding: 8px;
+      border-radius: 12px;
+      border: 1px solid #1e293b;
+    }
+
     .presets {
       display: flex;
       justify-content: center;
-      gap: 8px;
-      margin-bottom: 16px;
+      gap: 6px;
+      margin-bottom: 12px;
       flex-wrap: wrap;
     }
     .preset-btn {
       background: #334155;
       color: #cbd5e1;
       border: none;
-      padding: 8px 14px;
-      border-radius: 10px;
+      padding: 6px 12px;
+      border-radius: 8px;
       cursor: pointer;
       font-weight: bold;
+      font-size: 0.9rem;
       transition: all 0.2s;
     }
     .preset-btn:hover, .preset-btn.active {
@@ -84,40 +139,40 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      margin-bottom: 24px;
+      gap: 6px;
+      margin-bottom: 18px;
       background: #0f172a;
-      padding: 12px;
-      border-radius: 14px;
+      padding: 8px;
+      border-radius: 12px;
       border: 1px solid #334155;
     }
     .time-setter label {
-      font-size: 0.95rem;
+      font-size: 0.85rem;
       color: #94a3b8;
       font-weight: bold;
     }
     .custom-input {
-      width: 65px;
-      padding: 8px;
-      border-radius: 8px;
+      width: 55px;
+      padding: 6px;
+      border-radius: 6px;
       border: 1px solid #475569;
       background: #1e293b;
       color: #ffffff;
       text-align: center;
-      font-size: 1.1rem;
+      font-size: 1rem;
       font-weight: bold;
     }
     .controls {
       display: flex;
-      gap: 12px;
+      gap: 10px;
       justify-content: center;
     }
     .btn {
       flex: 1;
-      padding: 14px;
+      padding: 12px;
       border: none;
-      border-radius: 14px;
-      font-size: 1.1rem;
+      border-radius: 12px;
+      font-size: 1.05rem;
       font-weight: bold;
       cursor: pointer;
       transition: transform 0.1s, opacity 0.2s;
@@ -129,36 +184,7 @@
     .btn-pause { background: #eab308; color: #422006; }
     .btn-reset { background: #ef4444; color: #450a0a; }
 
-    /* カメラ・集中力グラフエリア */
-    .face-landmarkers-container {
-      position: relative;
-      width: 100%;
-      height: 200px;
-      margin-bottom: 24px;
-      background: #0f172a;
-      border-radius: 14px;
-      overflow: hidden;
-      border: 1px solid #334155;
-    }
-    #faceCanvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-    }
-    #chartCanvas {
-      width: 100%;
-      height: 100px;
-      margin-bottom: 24px;
-    }
-
-    /* 非表示のビデオ要素 */
-    #video {
-      display: none;
-    }
-
-    /* 残り時間に応じた緊張感演出 */
+    /* 緊急度カラー演出 */
     .urgency-medium .display { color: #facc15; }
     .urgency-high .display { color: #f97316; }
     .urgency-critical .display {
@@ -167,24 +193,29 @@
     }
     @keyframes pulse {
       from { opacity: 1; }
-      to { opacity: 0.4; }
+      to { opacity: 0.3; }
     }
   </style>
 </head>
 <body>
 
 <div class="timer-card" id="card">
-  <h1>🏫 集中力分析シミュレーションタイマー</h1>
-  
-  <div class="face-landmarkers-container">
-    <canvas id="faceCanvas"></canvas>
-    <video id="video" autoplay playsinline></video>
+  <h1>🧠 本物AI集中力測定タイマー</h1>
+
+  <!-- 顔ランドマーク描画領域（映像は非表示） -->
+  <div class="face-container">
+    <canvas id="faceCanvas" width="640" height="480"></canvas>
+    <video id="webcamVideo" playsinline></video>
+    <div class="status-badge" id="statusBadge">カメラ未有効化（スタートで起動）</div>
   </div>
 
   <div class="display" id="display">10:00</div>
   <div class="interval-badge" id="intervalBadge">通知間隔: 1分おき</div>
 
-  <canvas id="chartCanvas"></canvas>
+  <!-- 集中力リアルタイムグラフ -->
+  <div class="chart-container">
+    <canvas id="chartCanvas"></canvas>
+  </div>
 
   <!-- プリセットボタン -->
   <div class="presets">
@@ -213,13 +244,19 @@
   let remainingSeconds = 600;
   let timerId = null;
   let audioCtx = null;
-  let concentrationData = [];
-  let concentrationChart = null;
-  let videoStream = null;
-  let faceLandmarks = [];
+
+  // AI & カメラ関連
+  let faceMesh = null;
+  let camera = null;
+  let latestConcentrationScore = 100;
+  let smoothedScore = 100;
+  let scoreHistory = [];
+  let chart = null;
+
+  const videoElement = document.getElementById('webcamVideo');
   const faceCanvas = document.getElementById('faceCanvas');
   const faceCtx = faceCanvas.getContext('2d');
-  const video = document.getElementById('video');
+  const statusBadge = document.getElementById('statusBadge');
 
   const display = document.getElementById('display');
   const intervalBadge = document.getElementById('intervalBadge');
@@ -228,7 +265,7 @@
   const customMinInput = document.getElementById('customMin');
   const customSecInput = document.getElementById('customSec');
 
-  // 学校のスクールタイマー風「ピピッ」音
+  // 音響設定: 学校のスクールタイマー風「ピピッ」音
   function playSchoolPipipi() {
     if (!audioCtx) {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -263,7 +300,7 @@
   function playFinishSound() {
     if (!audioCtx) return;
     const now = audioCtx.currentTime;
-    const notes = [523.25, 659.25, 783.99, 1046.50]; // C, E, G, High C
+    const notes = [523.25, 659.25, 783.99, 1046.50];
     notes.forEach((freq, idx) => {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
@@ -278,20 +315,14 @@
     });
   }
 
-  // 🎉 クラッカーの紙吹雪アニメーション
+  // 🎉 紙吹雪
   function fireConfetti() {
     if (typeof confetti === 'function') {
       const count = 200;
       const defaults = { origin: { y: 0.7 } };
-
       function fire(particleRatio, opts) {
-        confetti({
-          ...defaults,
-          ...opts,
-          particleCount: Math.floor(count * particleRatio)
-        });
+        confetti({ ...defaults, ...opts, particleCount: Math.floor(count * particleRatio) });
       }
-
       fire(0.25, { spread: 26, startVelocity: 55 });
       fire(0.2, { spread: 60 });
       fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 });
@@ -300,144 +331,231 @@
     }
   }
 
-  // 集中力スコアのシミュレーション（ダミーデータ）
-  function generateConcentrationScore() {
-    // 0~100の間でランダムに変化させる
-    return Math.floor(Math.random() * 61) + 20; // 20~80
-  }
-
-  // 表情ランドマークのシミュレーション描画
-  function drawFaceLandmarks(score) {
-    if (!faceCtx) return;
-    faceCtx.clearRect(0, 0, faceCanvas.width, faceCanvas.height);
-    if (!faceLandmarks.length) return;
-
-    // 集中力スコアに応じてランドマークの色を変化させる
-    const r = Math.floor((100 - score) * 2.55);
-    const g = Math.floor(score * 2.55);
-    const b = 150;
-    const color = `rgb(${r}, ${g}, ${b})`;
-
-    faceCtx.fillStyle = color;
-    faceCtx.strokeStyle = color;
-    faceCtx.lineWidth = 2;
-
-    const centerX = faceCanvas.width / 2;
-    const centerY = faceCanvas.height / 2;
-    const scale = 50; // 顔の大きさのスケール
-
-    // 集中力スコアに応じてランドマークの位置を微調整する
-    const shift = (score - 50) / 10; 
-
-    // ダミーのランドマーク描画（顔の形、目、眉、口）
-    // 集中力スコアに合わせて目の位置や口の形を動かす
-
-    // 顔の輪郭
-    faceCtx.beginPath();
-    faceCtx.arc(centerX, centerY, scale, 0, 2 * Math.PI);
-    faceCtx.stroke();
-
-    // 眉
-    faceCtx.beginPath();
-    faceCtx.moveTo(centerX - 30 + shift, centerY - 30);
-    faceCtx.lineTo(centerX - 10 + shift, centerY - 35 + shift);
-    faceCtx.stroke();
-    faceCtx.beginPath();
-    faceCtx.moveTo(centerX + 30 - shift, centerY - 30);
-    faceCtx.lineTo(centerX + 10 - shift, centerY - 35 + shift);
-    faceCtx.stroke();
-
-    // 目
-    const eyeSize = 5;
-    faceCtx.beginPath();
-    faceCtx.arc(centerX - 20 + shift, centerY - 15, eyeSize, 0, 2 * Math.PI);
-    faceCtx.fill();
-    faceCtx.beginPath();
-    faceCtx.arc(centerX + 20 - shift, centerY - 15, eyeSize, 0, 2 * Math.PI);
-    faceCtx.fill();
-
-    // 口
-    const mouthWidth = 20 + shift;
-    const mouthHeight = 10 - shift;
-    faceCtx.beginPath();
-    faceCtx.moveTo(centerX - mouthWidth, centerY + 20);
-    faceCtx.quadraticCurveTo(centerX, centerY + 20 + mouthHeight, centerX + mouthWidth, centerY + 20);
-    faceCtx.stroke();
-
-  }
-
-  // 集中力グラフの描画（ヌルヌルアニメーション）
-  function initConcentrationChart() {
+  // 📈 Chart.js グラフの初期化 (ヌルヌルアニメーション設定)
+  function initChart() {
     const ctx = document.getElementById('chartCanvas').getContext('2d');
-    concentrationChart = new Chart(ctx, {
+    chart = new Chart(ctx, {
       type: 'line',
       data: {
         labels: [],
         datasets: [{
-          label: '集中力 (シミュレーション)',
-          data: concentrationData,
+          label: '集中度',
+          data: scoreHistory,
           borderColor: '#4ade80',
+          backgroundColor: 'rgba(74, 222, 128, 0.1)',
           borderWidth: 2,
           pointRadius: 0,
-          fill: false,
-          tension: 0.4 // ヌルヌルとした曲線
+          fill: true,
+          tension: 0.4 // ヌルヌルとした滑らかな曲線を表現
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         animation: {
-          duration: 300, // スムーズなアニメーション
-          easing: 'linear'
+          duration: 400,
+          easing: 'easeOutQuad'
         },
         scales: {
-          x: {
-            display: false,
-            ticks: {
-              maxTicksLimit: 10
-            }
-          },
+          x: { display: false },
           y: {
-            suggestedMin: 0,
-            suggestedMax: 100,
-            ticks: {
-              color: '#94a3b8'
-            },
-            grid: {
-              color: '#334155'
-            }
+            min: 0,
+            max: 100,
+            ticks: { color: '#64748b', font: { size: 10 } },
+            grid: { color: '#334155' }
           }
         },
-        plugins: {
-          legend: {
-            display: false
-          }
-        }
+        plugins: { legend: { display: false } }
       }
     });
   }
 
-  function updateConcentrationData() {
-    const score = generateConcentrationScore();
-    concentrationData.push(score);
-    if (concentrationData.length > 30) {
-      concentrationData.shift();
-    }
-    
-    concentrationChart.data.labels = Array.from({length: concentrationData.length}, (_, i) => i);
-    concentrationChart.update('none'); // アニメーションなしでデータ更新
+  function addChartData(score) {
+    scoreHistory.push(Math.round(score));
+    if (scoreHistory.length > 40) scoreHistory.shift();
 
-    drawFaceLandmarks(score);
+    chart.data.labels = Array.from({ length: scoreHistory.length }, (_, i) => i);
+    chart.data.datasets[0].data = scoreHistory;
+
+    // スコアに応じて線の色を動的変化 (緑/黄/赤)
+    if (score >= 70) chart.data.datasets[0].borderColor = '#4ade80';
+    else if (score >= 40) chart.data.datasets[0].borderColor = '#facc15';
+    else chart.data.datasets[0].borderColor = '#ef4444';
+
+    chart.update();
   }
 
-  // 残り時間に応じた通知間隔（秒）
+  // 🤖 MediaPipe AI顔認識 & 本物の集中力計算
+  function initFaceMesh() {
+    if (faceMesh) return;
+
+    faceMesh = new FaceMesh({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+    });
+
+    faceMesh.setOptions({
+      maxNumFaces: 1,
+      refineLandmarks: true,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5
+    });
+
+    faceMesh.onResults(onFaceResults);
+  }
+
+  function calculateRealConcentration(lm) {
+    // 1. 顔の正面度 (左右の頬[234, 454]に対する鼻[1]の位置)
+    const leftCheek = lm[234].x;
+    const rightCheek = lm[454].x;
+    const nose = lm[1].x;
+    const faceWidth = Math.abs(rightCheek - leftCheek);
+
+    let yawScore = 1.0;
+    if (faceWidth > 0.01) {
+      const noseRel = (nose - leftCheek) / faceWidth;
+      const offset = Math.abs(noseRel - 0.5); // 0なら完全正面
+      yawScore = Math.max(0, 1 - offset * 3.5);
+    }
+
+    // 2. 上下の向き (額[10], 顎[152]に対する鼻[1]の位置)
+    const forehead = lm[10].y;
+    const chin = lm[152].y;
+    const noseY = lm[1].y;
+    const faceHeight = Math.abs(chin - forehead);
+
+    let pitchScore = 1.0;
+    if (faceHeight > 0.01) {
+      const noseRelY = (noseY - forehead) / faceHeight;
+      const offsetY = Math.abs(noseRelY - 0.55);
+      pitchScore = Math.max(0, 1 - offsetY * 3.5);
+    }
+
+    // 3. 目の開き具合 (EAR: Eye Aspect Ratio)
+    const leftVert = Math.hypot(lm[159].x - lm[145].x, lm[159].y - lm[145].y);
+    const leftHoriz = Math.hypot(lm[33].x - lm[133].x, lm[33].y - lm[133].y);
+    const earLeft = leftVert / (leftHoriz + 0.0001);
+
+    const rightVert = Math.hypot(lm[386].x - lm[374].x, lm[386].y - lm[374].y);
+    const rightHoriz = Math.hypot(lm[362].x - lm[263].x, lm[362].y - lm[263].y);
+    const earRight = rightVert / (rightHoriz + 0.0001);
+
+    const avgEar = (earLeft + earRight) / 2;
+    let eyeScore = 1.0;
+    if (avgEar < 0.12) {
+      eyeScore = 0.2; // まばたき/目を閉じている
+    } else if (avgEar < 0.18) {
+      eyeScore = 0.6;
+    }
+
+    // 総合判定 (0~100%)
+    const rawScore = (yawScore * 0.45 + pitchScore * 0.35 + eyeScore * 0.20) * 100;
+
+    // 滑らかな値の補正 (指数移動平均)
+    smoothedScore = smoothedScore * 0.75 + rawScore * 0.25;
+    return Math.min(100, Math.max(0, smoothedScore));
+  }
+
+  function onFaceResults(results) {
+    faceCtx.save();
+    faceCtx.clearRect(0, 0, faceCanvas.width, faceCanvas.height);
+
+    if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+      const landmarks = results.multiFaceLandmarks[0];
+
+      // リアルタイム集中力スコア算出
+      const score = calculateRealConcentration(landmarks);
+      latestConcentrationScore = score;
+
+      // 映像は描画せず、顔の点・メッシュのみを描画
+      drawFaceMeshOverlay(landmarks, score);
+
+      const rounded = Math.round(score);
+      let statusText = "超集中！";
+      if (rounded < 40) statusText = "脇見・集中力低";
+      else if (rounded < 70) statusText = "やや不調";
+
+      statusBadge.textContent = `🎯 集中度: ${rounded}% (${statusText})`;
+      statusBadge.style.color = rounded >= 70 ? '#4ade80' : rounded >= 40 ? '#facc15' : '#f87171';
+    } else {
+      latestConcentrationScore = 0;
+      statusBadge.textContent = `⚠️ 顔が認識されていません`;
+      statusBadge.style.color = '#ef4444';
+    }
+    faceCtx.restore();
+  }
+
+  // 顔ランドマーク（点・メッシュ）の描画（背景映像なし）
+  function drawFaceMeshOverlay(landmarks, score) {
+    const w = faceCanvas.width;
+    const h = faceCanvas.height;
+
+    // 集中度に応じたネオンカラー
+    const hue = Math.max(0, Math.min(120, (score / 100) * 120));
+    const mainColor = `hsl(${hue}, 90%, 55%)`;
+
+    // コネクター描画 (標準描画関数がある場合)
+    if (typeof FACEMESH_TESSELATION !== 'undefined' && typeof drawConnectors === 'function') {
+      drawConnectors(faceCtx, landmarks, FACEMESH_TESSELATION, { color: `hsla(${hue}, 80%, 50%, 0.18)`, lineWidth: 0.8 });
+      if (typeof FACEMESH_RIGHT_EYE !== 'undefined') drawConnectors(faceCtx, landmarks, FACEMESH_RIGHT_EYE, { color: mainColor, lineWidth: 1.5 });
+      if (typeof FACEMESH_LEFT_EYE !== 'undefined') drawConnectors(faceCtx, landmarks, FACEMESH_LEFT_EYE, { color: mainColor, lineWidth: 1.5 });
+      if (typeof FACEMESH_LIPS !== 'undefined') drawConnectors(faceCtx, landmarks, FACEMESH_LIPS, { color: '#f43f5e', lineWidth: 1.2 });
+      if (typeof FACEMESH_FACE_OVAL !== 'undefined') drawConnectors(faceCtx, landmarks, FACEMESH_FACE_OVAL, { color: mainColor, lineWidth: 1.5 });
+    }
+
+    // ドット描画 (鏡像反転して自然な見た目に)
+    faceCtx.fillStyle = mainColor;
+    for (let i = 0; i < landmarks.length; i += 3) {
+      const pt = landmarks[i];
+      const x = (1 - pt.x) * w;
+      const y = pt.y * h;
+      faceCtx.beginPath();
+      faceCtx.arc(x, y, 1.2, 0, 2 * Math.PI);
+      faceCtx.fill();
+    }
+  }
+
+  // カメラの初期化とブラウザの権限要求
+  async function startCamera() {
+    initFaceMesh();
+    if (!camera) {
+      statusBadge.textContent = "📷 カメラアクセスの許可を求めています...";
+      camera = new Camera(videoElement, {
+        onFrame: async () => {
+          if (videoElement) {
+            await faceMesh.send({ image: videoElement });
+          }
+        },
+        width: 640,
+        height: 480
+      });
+    }
+    try {
+      await camera.start();
+    } catch (err) {
+      console.error("Camera access error:", err);
+      statusBadge.textContent = "❌ カメラのアクセスが拒否されました";
+      statusBadge.style.color = "#ef4444";
+    }
+  }
+
+  function stopCamera() {
+    if (camera) {
+      camera.stop();
+      camera = null;
+    }
+    faceCtx.clearRect(0, 0, faceCanvas.width, faceCanvas.height);
+    statusBadge.textContent = "カメラ停止中";
+    statusBadge.style.color = "#94a3b8";
+  }
+
+  // 通知間隔ルール
   function getBeepInterval(rem) {
-    if (rem > 120) return 60; // 2分超: 1分おき
-    if (rem > 60)  return 30; // 1分〜2分: 30秒おき
-    if (rem > 30)  return 15; // 30秒〜1分: 15秒おき
-    if (rem > 15)  return 10; // 15秒〜30秒: 10秒おき
-    if (rem > 5)   return 5;  // 5秒〜15秒: 5秒おき
-    return 1;                 // 5秒以下: 毎秒
+    if (rem > 120) return 60;
+    if (rem > 60)  return 30;
+    if (rem > 30)  return 15;
+    if (rem > 15)  return 10;
+    if (rem > 5)   return 5;
+    return 1;
   }
 
   function updateDisplay() {
@@ -452,7 +570,6 @@
       intervalBadge.textContent = `🎉 タイムアップ！お疲れ様！ 🎉`;
     }
 
-    // 警戒レベルの色・演出切り替え
     card.classList.remove('urgency-medium', 'urgency-high', 'urgency-critical');
     if (remainingSeconds <= 5) {
       card.classList.add('urgency-critical');
@@ -470,7 +587,7 @@
       startBtn.textContent = 'スタート';
       startBtn.className = 'btn btn-start';
       playFinishSound();
-      fireConfetti(); // クラッカー発射！
+      fireConfetti();
       updateDisplay();
       stopCamera();
       return;
@@ -478,9 +595,11 @@
 
     remainingSeconds--;
     updateDisplay();
-    updateConcentrationData();
 
-    // 指定間隔で学校風の「ピピッ」音を鳴らす
+    // 集中力データのグラフ更新
+    addChartData(latestConcentrationScore);
+
+    // 学校風「ピピッ」音
     const interval = getBeepInterval(remainingSeconds);
     if (remainingSeconds > 0 && remainingSeconds % interval === 0) {
       playSchoolPipipi();
@@ -503,8 +622,8 @@
       timerId = setInterval(tick, 1000);
       startBtn.textContent = '一時停止';
       startBtn.className = 'btn btn-pause';
-      playSchoolPipipi(); // スタート合図
-      initCamera();
+      playSchoolPipipi();
+      startCamera(); // ブラウザ標準のカメラ許可を要求＆起動
     }
   }
 
@@ -516,19 +635,17 @@
     remainingSeconds = totalSeconds;
     startBtn.textContent = 'スタート';
     startBtn.className = 'btn btn-start';
-    concentrationData = [];
-    concentrationChart.data.labels = [];
-    concentrationChart.update('none');
-    faceCtx.clearRect(0, 0, faceCanvas.width, faceCanvas.height);
+    scoreHistory = [];
+    chart.data.labels = [];
+    chart.data.datasets[0].data = [];
+    chart.update();
     updateDisplay();
     stopCamera();
   }
 
   function setPreset(min, sec) {
     document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
-    if (event && event.target && event.target.classList) {
-      event.target.classList.add('active');
-    }
+    if (event && event.target) event.target.classList.add('active');
     customMinInput.value = min;
     customSecInput.value = sec;
     totalSeconds = min * 60 + sec;
@@ -543,35 +660,11 @@
     resetTimer();
   }
 
-  async function initCamera() {
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      try {
-        videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
-        video.srcObject = videoStream;
-        await video.play();
+  window.addEventListener('DOMContentLoaded', () => {
+    initChart();
+    updateDisplay();
+  });
+</script>
 
-        // ランドマーク（シミュレーション）の設定
-        faceCanvas.width = video.videoWidth;
-        faceCanvas.height = video.videoHeight;
-        faceLandmarks = Array.from({length: 468}, (_, i) => ({x: 0, y: 0}));
-
-        drawFaceLandmarks(50);
-      } catch (err) {
-        console.error("Camera access denied or not available.", err);
-        // カメラが使えない場合の処理（シミュレーションを停止するなど）
-      }
-    }
-  }
-
-  function stopCamera() {
-    if (videoStream) {
-      const tracks = videoStream.getTracks();
-      tracks.forEach(track => track.stop());
-      video.srcObject = null;
-      videoStream = null;
-    }
-  }
-
-  window.addEventListener('load', () => {
-    initody>
-</
+</body>
+</html>
