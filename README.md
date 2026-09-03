@@ -1,522 +1,1106 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>独り言ログ & 顔変身ARアプリ</title>
-    <style>
-        :root {
-            --bg-color: #0f172a;
-            --card-bg: #1e293b;
-            --accent-color: #38bdf8;
-            --accent-hover: #0284c7;
-            --text-color: #f8fafc;
-            --text-muted: #94a3b8;
-            --spider-red: #ef4444;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>スパイダー・コンセントレーション ＆ 独り言AI思考解析タイマー</title>
+  <!-- 🎉 クラッカー紙吹雪 -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <!-- 📈 リアルタイムグラフ (Chart.js) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- 👤 MediaPipe FaceMesh -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      background: #090d16;
+      color: #f8fafc;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .timer-card {
+      background: #111827;
+      border-radius: 24px;
+      padding: 24px;
+      width: 100%;
+      max-width: 540px;
+      text-align: center;
+      box-shadow: 0 20px 50px rgba(220, 38, 38, 0.15), 0 10px 30px rgba(0, 0, 0, 0.8);
+      border: 2px solid #374151;
+      position: relative;
+    }
+    h1 {
+      font-size: 1.25rem;
+      margin-bottom: 12px;
+      color: #ef4444;
+      letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
 
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px;
-        }
+    /* 勉強テーマ入力欄 */
+    .topic-container {
+      margin-bottom: 12px;
+      text-align: left;
+    }
+    .topic-container label {
+      font-size: 0.78rem;
+      color: #9ca3af;
+      font-weight: bold;
+      display: block;
+      margin-bottom: 4px;
+    }
+    .topic-input {
+      width: 100%;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid #4b5563;
+      background: #030712;
+      color: #38bdf8;
+      font-size: 0.95rem;
+      font-weight: bold;
+      outline: none;
+    }
+    .topic-input:focus {
+      border-color: #ef4444;
+    }
 
-        h1 {
-            margin-bottom: 20px;
-            font-size: 1.8rem;
-            color: var(--accent-color);
-            text-align: center;
-        }
+    /* カメラ＆マスクビュー */
+    .face-landmarkers-container {
+      position: relative;
+      width: 100%;
+      height: 220px;
+      margin-bottom: 12px;
+      background: #000;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 2px solid #b91c1c;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #video { display: none; }
+    #faceCanvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      transform: scaleX(-1); /* 鏡映像 */
+    }
+    .status-badge {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 6px 14px;
+      border-radius: 16px;
+      font-size: 0.78rem;
+      font-weight: bold;
+      background: rgba(3, 7, 18, 0.85);
+      border: 1px solid #ef4444;
+      color: #fca5a5;
+      backdrop-filter: blur(6px);
+      white-space: nowrap;
+      z-index: 10;
+    }
+    .audio-indicator {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 4px 10px;
+      border-radius: 10px;
+      font-size: 0.72rem;
+      font-weight: bold;
+      background: rgba(17, 24, 39, 0.85);
+      border: 1px solid #374151;
+      color: #9ca3af;
+      z-index: 10;
+    }
+    .audio-indicator.active {
+      color: #4ade80;
+      border-color: #22c55e;
+      background: rgba(22, 101, 52, 0.4);
+    }
 
-        .container {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 20px;
-            max-width: 1000px;
-            width: 100%;
-        }
+    /* 🗣️ 独り言リアルタイム解析テロップ */
+    .speech-card {
+      background: #030712;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      text-align: left;
+    }
+    .speech-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+      font-size: 0.75rem;
+      color: #9ca3af;
+    }
+    .speech-category-tag {
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      font-weight: bold;
+    }
+    .tag-thinking { background: #0284c7; color: #e0f2fe; }
+    .tag-understood { background: #15803d; color: #dcfce7; }
+    .tag-question { background: #b45309; color: #fef3c7; }
+    .tag-offtopic { background: #b91c1c; color: #fee2e2; }
+    .tag-idle { background: #374151; color: #9ca3af; }
 
-        @media (min-width: 768px) {
-            .container {
-                grid-template-columns: 1fr 1fr;
-            }
-        }
+    .speech-body {
+      font-size: 0.88rem;
+      color: #f3f4f6;
+      min-height: 22px;
+      font-weight: 500;
+    }
+    .speech-ai-advice {
+      margin-top: 6px;
+      font-size: 0.78rem;
+      color: #38bdf8;
+      background: rgba(14, 165, 233, 0.1);
+      padding: 4px 8px;
+      border-radius: 6px;
+      border-left: 3px solid #0284c7;
+      display: none;
+    }
 
-        .card {
-            background: var(--card-bg);
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
+    .display {
+      font-size: 4.2rem;
+      font-weight: 800;
+      font-family: 'Courier New', Courier, monospace;
+      margin: 2px 0;
+      color: #ef4444;
+      text-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+      transition: color 0.3s ease;
+    }
+    .interval-badge {
+      display: inline-block;
+      padding: 4px 14px;
+      border-radius: 16px;
+      background: #1f2937;
+      font-size: 0.78rem;
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: #9ca3af;
+    }
 
-        .card h2 {
-            font-size: 1.3rem;
-            border-bottom: 2px solid var(--accent-color);
-            padding-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+    .chart-container {
+      position: relative;
+      width: 100%;
+      height: 90px;
+      margin-bottom: 12px;
+      background: #030712;
+      padding: 6px;
+      border-radius: 12px;
+      border: 1px solid #1f2937;
+    }
 
-        /* 独り言ログ用スタイル */
-        .setting-group {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
+    .presets {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .preset-btn {
+      background: #1f2937;
+      color: #cbd5e1;
+      border: 1px solid #374151;
+      padding: 6px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 0.85rem;
+    }
+    .preset-btn.active {
+      background: #dc2626;
+      color: #ffffff;
+      border-color: #ef4444;
+    }
+    .controls {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+    .btn {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .btn-start { background: #dc2626; color: #ffffff; box-shadow: 0 4px 14px rgba(220, 38, 38, 0.4); }
+    .btn-start:hover { background: #ef4444; }
+    .btn-reset { background: #374151; color: #d1d5db; }
 
-        label {
-            font-size: 0.9rem;
-            color: var(--text-muted);
-        }
-
-        .slider-container {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        input[type="range"] {
-            flex: 1;
-            accent-color: var(--accent-color);
-        }
-
-        .sec-display {
-            font-weight: bold;
-            color: var(--accent-color);
-            min-width: 45px;
-        }
-
-        button {
-            background: var(--accent-color);
-            color: #000;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background 0.2s, transform 0.1s;
-        }
-
-        button:hover {
-            background: var(--accent-hover);
-        }
-
-        button:active {
-            transform: scale(0.98);
-        }
-
-        button:disabled {
-            background: #475569;
-            color: #94a3b8;
-            cursor: not-allowed;
-        }
-
-        .status {
-            font-size: 0.85rem;
-            color: #f59e0b;
-            min-height: 20px;
-        }
-
-        .log-box, .ai-box {
-            background: #090d16;
-            border-radius: 8px;
-            padding: 12px;
-            min-height: 80px;
-            max-height: 150px;
-            overflow-y: auto;
-            font-size: 0.95rem;
-            border: 1px solid #334155;
-            white-space: pre-wrap;
-        }
-
-        .ai-box {
-            border-color: #3b82f6;
-            color: #93c5fd;
-        }
-
-        /* 顔変身カメラ用スタイル */
-        .camera-container {
-            position: relative;
-            width: 100%;
-            aspect-ratio: 4/3;
-            background: #000;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        video, canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        video {
-            transform: scaleX(-1); /* 鏡像表示 */
-        }
-
-        canvas {
-            transform: scaleX(-1);
-            pointer-events: none;
-        }
-
-        select {
-            background: #0f172a;
-            color: #fff;
-            border: 1px solid #334155;
-            padding: 10px;
-            border-radius: 6px;
-            font-size: 1rem;
-        }
-    </style>
+    /* 📊 終了時要約モーダル */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top:0; left:0; width:100%; height:100%;
+      background: rgba(0,0,0,0.85);
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      padding: 20px;
+      backdrop-filter: blur(4px);
+    }
+    .modal-content {
+      background: #111827;
+      border-radius: 20px;
+      padding: 24px;
+      max-width: 500px;
+      width: 100%;
+      border: 2px solid #ef4444;
+      text-align: left;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 25px 50px rgba(220, 38, 38, 0.2);
+    }
+    .modal-title {
+      font-size: 1.3rem;
+      color: #f87171;
+      text-align: center;
+      margin-bottom: 16px;
+      font-weight: bold;
+    }
+    .score-box {
+      text-align: center;
+      background: #030712;
+      padding: 16px;
+      border-radius: 16px;
+      margin-bottom: 16px;
+      border: 1px solid #1f2937;
+    }
+    .score-number {
+      font-size: 3.5rem;
+      font-weight: 800;
+      color: #4ade80;
+    }
+    .summary-section {
+      margin-bottom: 14px;
+    }
+    .summary-section h3 {
+      font-size: 0.9rem;
+      color: #9ca3af;
+      margin-bottom: 6px;
+      border-bottom: 1px solid #1f2937;
+      padding-bottom: 4px;
+    }
+    .log-list {
+      background: #030712;
+      border-radius: 8px;
+      padding: 10px;
+      max-height: 140px;
+      overflow-y: auto;
+      font-size: 0.82rem;
+    }
+    .log-item {
+      margin-bottom: 6px;
+      padding-bottom: 4px;
+      border-bottom: 1px dashed #1f2937;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .log-item:last-child { border-bottom: none; }
+    .close-btn {
+      width: 100%;
+      padding: 12px;
+      background: #dc2626;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+  </style>
 </head>
 <body>
 
-    <h1>🎤 独り言ログ & 🎭 顔変身ARアプリ</h1>
+<div class="timer-card">
+  <h1>🕷️ スパイダーAI 集中タイマー</h1>
 
-    <div class="container">
-        <!-- 1. 独り言ログセクション -->
-        <div class="card">
-            <h2>🎙️ 独り言ログ（STT → AI）</h2>
-            
-            <div class="setting-group">
-                <label for="duration">録音時間（秒数調整）:</label>
-                <div class="slider-container">
-                    <input type="range" id="duration" min="2" max="20" value="5">
-                    <span class="sec-display" id="secVal">5 秒</span>
-                </div>
-            </div>
+  <div class="topic-container">
+    <label for="studyTopic">📝 今日の学習テーマ（例: 数学の微分積分 / 英単語）</label>
+    <input type="text" id="studyTopic" class="topic-input" value="数学の微分積分">
+  </div>
 
-            <button id="startRecBtn">録音 & 認識スタート</button>
-            <div class="status" id="statusText">待機中</div>
+  <div class="face-landmarkers-container">
+    <div class="audio-indicator" id="audioIndicator">✏️ 筆記音: 未検知</div>
+    <div class="status-badge" id="statusBadge">カメラ・マイク準備中…</div>
+    <video id="video" playsinline></video>
+    <canvas id="faceCanvas"></canvas>
+  </div>
 
-            <label>1. 認識された音声テキスト (STT):</label>
-            <div class="log-box" id="sttResult">ここに認識結果が表示されます...</div>
+  <!-- 🗣️ 高度化された独り言AI解析エリア -->
+  <div class="speech-card">
+    <div class="speech-header">
+      <span>🗣️ 独り言・思考リアルタイムAI解析</span>
+      <span class="speech-category-tag tag-idle" id="speechCategoryTag">待機中</span>
+    </div>
+    <div class="speech-body" id="speechText">（マイクに向かって思考をつぶやいてみましょう）</div>
+    <div class="speech-ai-advice" id="speechAiAdvice"></div>
+  </div>
 
-            <label>2. AIの応答・分析結果:</label>
-            <div class="ai-box" id="aiResponse">AIが読み込んだ内容の応答がここに表示されます...</div>
-        </div>
+  <div class="display" id="display">10:00</div>
+  <div class="interval-badge" id="intervalBadge">通知間隔: 1分おき</div>
 
-        <!-- 2. 顔認識・顔変身セクション -->
-        <div class="card">
-            <h2>🎭 顔変身カメラ（ARフィルタ）</h2>
+  <div class="chart-container">
+    <canvas id="chartCanvas"></canvas>
+  </div>
 
-            <div class="setting-group">
-                <label for="maskSelect">変換するマスクを選択:</label>
-                <select id="maskSelect">
-                    <option value="spiderman">🕷️ スパイダーマン</option>
-                    <option value="cyber">🤖 サイバーマスク</option>
-                    <option value="anon">🎭 映画風仮面</option>
-                </select>
-            </div>
+  <div class="presets">
+    <button class="preset-btn" onclick="setPreset(1)">1分</button>
+    <button class="preset-btn" onclick="setPreset(3)">3分</button>
+    <button class="preset-btn" onclick="setPreset(5)">5分</button>
+    <button class="preset-btn active" onclick="setPreset(10)">10分</button>
+  </div>
 
-            <button id="toggleCamBtn">カメラ起動</button>
+  <div class="controls">
+    <button class="btn btn-start" id="startBtn" onclick="toggleTimer()">スタート</button>
+    <button class="btn btn-reset" onclick="resetTimer()">リセット</button>
+  </div>
+</div>
 
-            <div class="camera-container">
-                <video id="webcam" autoplay playsinline muted></video>
-                <canvas id="arCanvas"></canvas>
-            </div>
-        </div>
+<!-- 📊 終了時要約レポート モーダル -->
+<div class="modal-overlay" id="summaryModal">
+  <div class="modal-content">
+    <div class="modal-title">🕷️ 学習・思考集中度 分析レポート</div>
+
+    <div class="score-box">
+      <div style="font-size:0.82rem; color:#9ca3af;">総合集中スコア</div>
+      <div class="score-number" id="finalScoreDisplay">88</div>
+      <div id="scoreEvalText" style="font-size:0.88rem; color:#38bdf8;">素晴らしい集中力でした！</div>
     </div>
 
-    <script>
-        // ==========================================
-        // 1. 独り言ログ機能（音声認識 + AI読み込み）
-        // ==========================================
-        const durationInput = document.getElementById('duration');
-        const secVal = document.getElementById('secVal');
-        const startRecBtn = document.getElementById('startRecBtn');
-        const statusText = document.getElementById('statusText');
-        const sttResult = document.getElementById('sttResult');
-        const aiResponse = document.getElementById('aiResponse');
+    <div class="summary-section">
+      <h3>📈 姿勢・筆記・思考の総合分析</h3>
+      <p id="postureSummary" style="font-size:0.82rem; color:#d1d5db; margin-bottom:4px;"></p>
+      <p id="writingSummary" style="font-size:0.82rem; color:#d1d5db; margin-bottom:4px;"></p>
+      <p id="speechSummary" style="font-size:0.82rem; color:#38bdf8;"></p>
+    </div>
 
-        let recTimer = null;
-        let isRecording = false;
+    <div class="summary-section">
+      <h3>💬 発話ログ & 思考セッション履歴</h3>
+      <div class="log-list" id="speechLogList">
+        <!-- JSで動的挿入 -->
+      </div>
+    </div>
 
-        // 秒数スライダーの反映
-        durationInput.addEventListener('input', (e) => {
-            secVal.textContent = `${e.target.value} 秒`;
-        });
+    <button class="close-btn" onclick="closeModal()">閉じる</button>
+  </div>
+</div>
 
-        // Web Speech API（音声認識）の準備
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        let recognition = null;
+<script>
+  let totalSeconds = 600;
+  let remainingSeconds = 600;
+  let timerId = null;
 
-        if (SpeechRecognition) {
-            recognition = new SpeechRecognition();
-            recognition.lang = 'ja-JP';
-            recognition.continuous = true;
-            recognition.interimResults = true;
+  // Web Audio & マイク
+  let audioCtx = null;
+  let micStream = null;
+  let analyser = null;
+  let isPenSoundDetected = false;
+  let writingDetectCount = 0;
+  let totalTicks = 0;
 
-            recognition.onresult = (event) => {
-                let transcript = '';
-                for (let i = event.resultIndex; i < event.results.length; i++) {
-                    transcript += event.results[i][0].transcript;
-                }
-                sttResult.textContent = transcript;
-            };
+  // 顔認識 & スコア履歴
+  let faceMesh = null;
+  let videoStream = null;
+  let latestConcentrationScore = 100;
+  let smoothedScore = 100;
+  let scoreHistory = [];
+  let chart = null;
 
-            recognition.onerror = (event) => {
-                statusText.textContent = `エラーが発生しました: ${event.error}`;
-                stopRecording();
-            };
+  // 🗣️ 独り言AI解析エンジン
+  let recognition = null;
+  let speechLogs = []; // 全発話ログ [{ time, text, category, advice }]
+  let categoryCounts = { thinking: 0, understood: 0, question: 0, offtopic: 0 };
 
-            recognition.onend = () => {
-                if (isRecording) {
-                    stopRecording();
-                }
-            };
-        } else {
-            statusText.textContent = 'お使いのブラウザは音声認識に対応していません。(Chrome推奨)';
-            startRecBtn.disabled = true;
+  const video = document.getElementById('video');
+  const faceCanvas = document.getElementById('faceCanvas');
+  const faceCtx = faceCanvas.getContext('2d');
+  const statusBadge = document.getElementById('statusBadge');
+  const audioIndicator = document.getElementById('audioIndicator');
+  
+  const speechText = document.getElementById('speechText');
+  const speechCategoryTag = document.getElementById('speechCategoryTag');
+  const speechAiAdvice = document.getElementById('speechAiAdvice');
+
+  const display = document.getElementById('display');
+  const intervalBadge = document.getElementById('intervalBadge');
+  const startBtn = document.getElementById('startBtn');
+  const studyTopicInput = document.getElementById('studyTopic');
+
+  // 辞書・パターン定義（独り言AI解析）
+  const DICT = {
+    thinking: ["なぜ", "だから", "つまり", "公式", "代入", "仮定", "まず", "整理", "計算", "解法", "まとめると", "求める", "定義", "手順", "順番"],
+    understood: ["なるほど", "わかった", "解けた", "合ってる", "オッケー", "理解", "これか", "完璧", "見えた", "よし"],
+    question: ["わからない", "どういうこと", "変だな", "間違えた", "なんで", "合わない", "難しい", "どこで", "不可解"],
+    offtopic: ["眠い", "スマホ", "Youtube", "お腹すいた", "だるい", "ゲーム", "疲れた", "帰りたい", "遊ぶ", "漫画", "めんどい", "後でいい"]
+  };
+
+  // 🎙️ 高度化された音声認識 & AI解析初期化
+  function initSpeechRecognition() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      speechText.textContent = "※お使いのブラウザは音声認識非対応です";
+      return;
+    }
+
+    recognition = new SpeechRecognition();
+    recognition.lang = 'ja-JP';
+    recognition.continuous = true;
+    recognition.interimResults = false;
+
+    recognition.onresult = (event) => {
+      const lastIndex = event.results.length - 1;
+      const transcript = event.results[lastIndex][0].transcript.trim();
+      if (!transcript) return;
+
+      analyzeSpeechWithAI(transcript);
+    };
+
+    recognition.onerror = (err) => {
+      console.warn("音声認識エラー:", err.error);
+    };
+
+    recognition.onend = () => {
+      if (timerId && recognition) {
+        try { recognition.start(); } catch(e){}
+      }
+    };
+  }
+
+  // 🤖 独り言のリアルタイムAI文脈解析
+  function analyzeSpeechWithAI(text) {
+    const topic = studyTopicInput.value.trim();
+    const topicKeywords = topic.split(/[\s　]+/);
+    const timeStr = display.textContent;
+
+    let category = 'thinking'; // デフォルトは思考中
+    let advice = "";
+
+    // 1. 各カテゴリのスコア算出
+    let scores = {
+      thinking: 0,
+      understood: 0,
+      question: 0,
+      offtopic: 0
+    };
+
+    // 勉強テーマキーワードが含まれている場合は思考スコア加算
+    const containsTopic = topicKeywords.some(kw => kw.length > 1 && text.includes(kw));
+    if (containsTopic) scores.thinking += 2;
+
+    for (let cat in DICT) {
+      DICT[cat].forEach(word => {
+        if (text.includes(word)) scores[cat] += 1;
+      });
+    }
+
+    // 最高スコアのカテゴリを特定
+    let maxCat = 'thinking';
+    let maxVal = -1;
+    for (let cat in scores) {
+      if (scores[cat] > maxVal) {
+        maxVal = scores[cat];
+        maxCat = cat;
+      }
+    }
+
+    // 判定調整（辞書に引っかからずテーマ単語もない短文は保留/脱線チェック）
+    if (maxVal === 0) {
+      if (text.length > 6) maxCat = 'offtopic';
+      else maxCat = 'thinking';
+    }
+
+    category = maxCat;
+    categoryCounts[category]++;
+
+    // カテゴリごとのタグ演出 & AIアドバイス生成
+    speechCategoryTag.className = 'speech-category-tag';
+    speechText.textContent = `「${text}」`;
+
+    if (category === 'thinking') {
+      speechCategoryTag.textContent = "🟢 思考・学習中";
+      speechCategoryTag.classList.add('tag-thinking');
+      speechAiAdvice.style.display = 'none';
+    } else if (category === 'understood') {
+      speechCategoryTag.textContent = "✨ 理解・アハ体験";
+      speechCategoryTag.classList.add('tag-understood');
+      speechAiAdvice.textContent = "💡 素晴らしい！解法が定着しています。この調子で進めましょう。";
+      speechAiAdvice.style.display = 'block';
+      smoothedScore = Math.min(100, smoothedScore + 10); // 集中度ボーナス
+    } else if (category === 'question') {
+      speechCategoryTag.textContent = "💡 疑問・悩み";
+      speechCategoryTag.classList.add('tag-question');
+      speechAiAdvice.textContent = `💡 疑問を言語化できていますね。テーマ「${topicKeywords[0] || topic}」の基本定義や条件を見直してみましょう。`;
+      speechAiAdvice.style.display = 'block';
+    } else if (category === 'offtopic') {
+      speechCategoryTag.textContent = "⚠️ 脱線・集中低下";
+      speechCategoryTag.classList.add('tag-offtopic');
+      speechAiAdvice.textContent = `⚠️ 集中が散漫になっています。『${topic}』に意識を戻しましょう！`;
+      speechAiAdvice.style.display = 'block';
+      smoothedScore = Math.max(0, smoothedScore - 15); // 集中度ペナルティ
+    }
+
+    // ログに保存
+    speechLogs.push({
+      time: timeStr,
+      text: text,
+      category: category,
+      advice: advice || (speechAiAdvice.style.display === 'block' ? speechAiAdvice.textContent : "")
+    });
+  }
+
+  // 🕷️【スパイダーマンマスクを描画する高度描画エンジン】
+  function drawSpiderManMask(landmarks) {
+    if (!landmarks || landmarks.length === 0) return;
+
+    const w = faceCanvas.width;
+    const h = faceCanvas.height;
+
+    // キーポインターの取得（ランドマークインデックス）
+    const getPt = (idx) => ({ x: landmarks[idx].x * w, y: landmarks[idx].y * w, z: landmarks[idx].z }); // アスペクト正方化
+
+    // 1. 顔の外郭（Silhouette）のランドマークインデックス列
+    const faceOutlineIndices = [
+      10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377,
+      152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109
+    ];
+
+    faceCtx.save();
+
+    // 顔の外郭パスの作成
+    faceCtx.beginPath();
+    faceOutlineIndices.forEach((idx, i) => {
+      const pt = getPt(idx);
+      if (i === 0) faceCtx.moveTo(pt.x, pt.y);
+      else faceCtx.lineTo(pt.x, pt.y);
+    });
+    faceCtx.closePath();
+
+    // --- A. マスクのベースカラー & 立体グラデーション ---
+    const nosePt = getPt(1); // 鼻先を中心
+    const chinPt = getPt(152);
+    const grad = faceCtx.createRadialGradient(nosePt.x, nosePt.y, 10, nosePt.x, nosePt.y, Math.abs(chinPt.y - nosePt.y) * 1.5);
+    grad.addColorStop(0, '#ef4444');   // 中央：明るい赤
+    grad.addColorStop(0.6, '#dc2626'); // 中間：スパイダーレッド
+    grad.addColorStop(1, '#7f1d1d');   // 外縁：ダークレッド
+
+    faceCtx.fillStyle = grad;
+    faceCtx.fill();
+
+    // クリップして顔の範囲内にすべての描画を制限
+    faceCtx.clip();
+
+    // --- B. スーツのヘキサゴン・微細テクスチャ演出 ---
+    faceCtx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
+    faceCtx.lineWidth = 1;
+    for (let x = 0; x < w; x += 12) {
+      faceCtx.beginPath();
+      faceCtx.moveTo(x, 0);
+      faceCtx.lineTo(x, h);
+      faceCtx.stroke();
+    }
+
+    // --- C. 蜘蛛の巣（ウェブ）ネットワークの描画 ---
+    // 放射状のメインウェブ（鼻中心 1/4 から伸びる線）
+    const webCenter = getPt(4); // 鼻筋中央
+    const radialTargets = [10, 338, 297, 332, 284, 251, 454, 323, 361, 152, 136, 172, 58, 234, 127, 21, 54, 103, 67];
+
+    faceCtx.strokeStyle = 'rgba(15, 23, 42, 0.85)';
+    faceCtx.lineWidth = 1.8;
+
+    radialTargets.forEach(idx => {
+      const target = getPt(idx);
+      faceCtx.beginPath();
+      faceCtx.moveTo(webCenter.x, webCenter.y);
+      faceCtx.lineTo(target.x, target.y);
+      faceCtx.stroke();
+    });
+
+    // 同心円状のウェブリング（3段階の高さ）
+    const ringFactors = [0.25, 0.5, 0.75, 0.95];
+    ringFactors.forEach(factor => {
+      faceCtx.beginPath();
+      radialTargets.forEach((idx, i) => {
+        const target = getPt(idx);
+        const rx = webCenter.x + (target.x - webCenter.x) * factor;
+        const ry = webCenter.y + (target.y - webCenter.y) * factor;
+
+        if (i === 0) faceCtx.moveTo(rx, ry);
+        else {
+          const prevIdx = radialTargets[i - 1];
+          const prevTarget = getPt(prevIdx);
+          const prx = webCenter.x + (prevTarget.x - webCenter.x) * factor;
+          const pry = webCenter.y + (prevTarget.y - webCenter.y) * factor;
+          // ベジェ曲線でたるみを持たせる
+          const cx = (prx + rx) / 2 + (webCenter.x - (prx + rx) / 2) * 0.15;
+          const cy = (pry + ry) / 2 + (webCenter.y - (pry + ry) / 2) * 0.15;
+          faceCtx.quadraticCurveTo(cx, cy, rx, ry);
         }
+      });
+      faceCtx.closePath();
+      faceCtx.stroke();
+    });
 
-        // 録音 & 認識スタート
-        startRecBtn.addEventListener('click', () => {
-            if (isRecording) {
-                stopRecording();
-            } else {
-                startRecording();
-            }
-        });
+    // --- D. リアル・スパイダーアイ（太い黒枠＋メタリック白レンズ） ---
+    // 左目・右目の周囲骨格ランドマーク
+    const leftEyeIndices = [70, 63, 105, 66, 107, 55, 193, 245, 128, 121, 120, 119, 215, 138, 135, 169, 170];
+    const rightEyeIndices = [300, 293, 334, 296, 336, 285, 417, 465, 357, 350, 349, 348, 435, 367, 364, 394, 395];
 
-        function startRecording() {
-            const seconds = parseInt(durationInput.value, 10);
-            sttResult.textContent = '音声を聞き取っています...';
-            aiResponse.textContent = 'AIの処理待ち...';
-            statusText.textContent = `録音中... (あと ${seconds} 秒)`;
-            startRecBtn.textContent = '停止';
-            isRecording = true;
+    function drawSpideyEye(indices, isLeft) {
+      faceCtx.save();
+      faceCtx.beginPath();
+      indices.forEach((idx, i) => {
+        const pt = getPt(idx);
+        if (i === 0) faceCtx.moveTo(pt.x, pt.y);
+        else faceCtx.lineTo(pt.x, pt.y);
+      });
+      faceCtx.closePath();
 
-            try {
-                recognition.start();
-            } catch (e) {
-                console.log(e);
-            }
+      // 目内部グラデーション（メタリックシルバー～ホワイト）
+      const firstPt = getPt(indices[0]);
+      const lastPt = getPt(indices[8] || indices[4]);
+      const eyeGrad = faceCtx.createLinearGradient(firstPt.x, firstPt.y, lastPt.x, lastPt.y);
+      eyeGrad.addColorStop(0, '#ffffff');
+      eyeGrad.addColorStop(0.7, '#e2e8f0');
+      eyeGrad.addColorStop(1, '#94a3b8');
 
-            let timeLeft = seconds;
-            recTimer = setInterval(() => {
-                timeLeft--;
-                if (timeLeft > 0) {
-                    statusText.textContent = `録音中... (あと ${timeLeft} 秒)`;
-                } else {
-                    stopRecording();
-                }
-            }, 1000);
+      faceCtx.fillStyle = eyeGrad;
+      faceCtx.fill();
+
+      // レンズ縁の漆黒太フレーム
+      faceCtx.strokeStyle = '#090d16';
+      faceCtx.lineWidth = 6;
+      faceCtx.stroke();
+
+      // 内側の光沢ハイライト線
+      faceCtx.lineWidth = 2;
+      faceCtx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+      faceCtx.stroke();
+
+      faceCtx.restore();
+    }
+
+    drawSpideyEye(leftEyeIndices, true);
+    drawSpideyEye(rightEyeIndices, false);
+
+    // --- E. 鼻筋・頬の立体シャドウ（シェーディング） ---
+    const noseShadowGrad = faceCtx.createLinearGradient(webCenter.x - 20, webCenter.y, webCenter.x + 20, webCenter.y);
+    noseShadowGrad.addColorStop(0, 'rgba(0,0,0,0.3)');
+    noseShadowGrad.addColorStop(0.5, 'rgba(0,0,0,0)');
+    noseShadowGrad.addColorStop(1, 'rgba(0,0,0,0.3)');
+    faceCtx.fillStyle = noseShadowGrad;
+    faceCtx.fillRect(0, 0, w, h);
+
+    faceCtx.restore();
+  }
+
+  // スクールタイマー音
+  function playSchoolPipipi() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+
+    const now = audioCtx.currentTime;
+    const freq = remainingSeconds <= 5 ? 3000 : 2500;
+    [0, 0.08].forEach(delay => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now + delay);
+      gain.gain.setValueAtTime(0.3, now + delay);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.05);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now + delay);
+      osc.stop(now + delay + 0.05);
+    });
+  }
+
+  function playFinishSound() {
+    if (!audioCtx) return;
+    const now = audioCtx.currentTime;
+    const notes = [523.25, 659.25, 783.99, 1046.50];
+    notes.forEach((freq, idx) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, now + idx * 0.12);
+      gain.gain.setValueAtTime(0.3, now + idx * 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.12 + 0.3);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now + idx * 0.12);
+      osc.stop(now + idx * 0.12 + 0.3);
+    });
+  }
+
+  // 📈 Chart.js グラフ初期化
+  function initChart() {
+    const ctx = document.getElementById('chartCanvas').getContext('2d');
+    chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          data: scoreHistory,
+          borderColor: '#ef4444',
+          backgroundColor: 'rgba(239, 68, 68, 0.15)',
+          borderWidth: 2,
+          pointRadius: 0,
+          fill: true,
+          tension: 0.4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 300 },
+        scales: {
+          x: { display: false },
+          y: { min: 0, max: 100, ticks: { color: '#6b7280' }, grid: { color: '#1f2937' } }
+        },
+        plugins: { legend: { display: false } }
+      }
+    });
+  }
+
+  function addChartData(score) {
+    scoreHistory.push(Math.round(score));
+    if (scoreHistory.length > 40) scoreHistory.shift();
+
+    chart.data.labels = Array.from({ length: scoreHistory.length }, (_, i) => i);
+    chart.data.datasets[0].data = scoreHistory;
+
+    if (score >= 70) chart.data.datasets[0].borderColor = '#4ade80';
+    else if (score >= 40) chart.data.datasets[0].borderColor = '#facc15';
+    else chart.data.datasets[0].borderColor = '#ef4444';
+
+    chart.update('none');
+  }
+
+  // 🎙️ マイク音響解析（筆記音検出）
+  async function initMicrophone() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') await audioCtx.resume();
+
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const source = audioCtx.createMediaStreamSource(micStream);
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 512;
+      source.connect(analyser);
+
+      analyzeAudioLoop();
+    } catch (err) {
+      audioIndicator.textContent = "🎙️ マイク無効";
+    }
+  }
+
+  function analyzeAudioLoop() {
+    if (!analyser || !micStream) return;
+
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+    analyser.getByteFrequencyData(dataArray);
+
+    let highFreqSum = 0;
+    const startIndex = Math.floor(dataArray.length * 0.35);
+    const endIndex = Math.floor(dataArray.length * 0.85);
+
+    for (let i = startIndex; i < endIndex; i++) highFreqSum += dataArray[i];
+    const avgHighFreq = highFreqSum / (endIndex - startIndex);
+
+    if (avgHighFreq > 35) {
+      isPenSoundDetected = true;
+      writingDetectCount++;
+      audioIndicator.textContent = "✏️ 筆記音検知中";
+      audioIndicator.classList.add('active');
+    } else {
+      isPenSoundDetected = false;
+      audioIndicator.textContent = "✏️ 筆記音: 未検知";
+      audioIndicator.classList.remove('active');
+    }
+
+    if (timerId) requestAnimationFrame(analyzeAudioLoop);
+  }
+
+  // 👤 MediaPipe FaceMesh & スパイダーマン描画ループ
+  function initFaceMesh() {
+    if (typeof FaceMesh === 'undefined') return;
+    faceMesh = new FaceMesh({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+    });
+
+    faceMesh.setOptions({
+      maxNumFaces: 1,
+      refineLandmarks: true,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5
+    });
+
+    faceMesh.onResults(onFaceResults);
+  }
+
+  function calculateConcentration(lm) {
+    const forehead = lm[10].y;
+    const chin = lm[152].y;
+    const noseY = lm[1].y;
+    const faceHeight = Math.abs(chin - forehead) || 0.001;
+    const noseRelY = (noseY - forehead) / faceHeight;
+
+    let pitchScore = 80;
+    let pitchStatus = "正面向き";
+
+    if (noseRelY >= 0.58 && noseRelY <= 0.75) {
+      pitchScore = 100;
+      pitchStatus = "手元・ノート集中";
+    } else if (noseRelY < 0.52) {
+      pitchScore = 30;
+      pitchStatus = "上向き（よそ見）";
+    } else if (noseRelY > 0.82) {
+      pitchScore = 20;
+      pitchStatus = "うつ伏せ傾向";
+    }
+
+    const noseX = lm[1].x;
+    const faceWidth = Math.abs(lm[454].x - lm[234].x) || 0.001;
+    const yawOffset = Math.abs((noseX - lm[234].x) / faceWidth - 0.5);
+    let yawScore = Math.max(0, 100 - yawOffset * 300);
+
+    let soundBonus = isPenSoundDetected ? 15 : 0;
+    let targetScore = Math.min(100, Math.max(0, (pitchScore * 0.6 + yawScore * 0.4) + soundBonus));
+
+    smoothedScore = smoothedScore * 0.7 + targetScore * 0.3;
+    return { score: smoothedScore, status: pitchStatus };
+  }
+
+  function onFaceResults(results) {
+    if (video.videoWidth > 0 && video.videoHeight > 0) {
+      if (faceCanvas.width !== video.videoWidth || faceCanvas.height !== video.videoHeight) {
+        faceCanvas.width = video.videoWidth;
+        faceCanvas.height = video.videoHeight;
+      }
+    }
+
+    faceCtx.save();
+    faceCtx.clearRect(0, 0, faceCanvas.width, faceCanvas.height);
+
+    if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+      const landmarks = results.multiFaceLandmarks[0];
+
+      // 🕷️ スパイダーマンマスクの動的フィット描画
+      drawSpiderManMask(landmarks);
+
+      const { score, status } = calculateConcentration(landmarks);
+      latestConcentrationScore = score;
+
+      const rounded = Math.round(score);
+      statusBadge.textContent = `🎯 集中度: ${rounded}% (${status})`;
+      statusBadge.style.borderColor = rounded >= 70 ? '#22c55e' : rounded >= 40 ? '#facc15' : '#ef4444';
+      statusBadge.style.color = rounded >= 70 ? '#4ade80' : rounded >= 40 ? '#facc15' : '#f87171';
+    } else {
+      latestConcentrationScore = 0;
+      smoothedScore = 0;
+      statusBadge.textContent = `🚶 離席・顔未検出 (0%)`;
+      statusBadge.style.borderColor = '#ef4444';
+      statusBadge.style.color = '#f87171';
+    }
+    faceCtx.restore();
+  }
+
+  async function startCamera() {
+    initFaceMesh();
+    initMicrophone();
+    initSpeechRecognition();
+
+    try {
+      videoStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+      video.srcObject = videoStream;
+      await video.play();
+
+      const processVideo = async () => {
+        if (faceMesh && video.readyState >= 2) {
+          await faceMesh.send({ image: video });
         }
+        requestAnimationFrame(processVideo);
+      };
+      processVideo();
+    } catch (err) {
+      statusBadge.textContent = "❌ カメラの起動に失敗しました";
+    }
+  }
 
-        function stopRecording() {
-            clearInterval(recTimer);
-            isRecording = false;
-            startRecBtn.textContent = '録音 & 認識スタート';
-            statusText.textContent = '認識完了。AIに送信中...';
+  // タイマー制御
+  function updateDisplay() {
+    const mins = Math.floor(remainingSeconds / 60);
+    const secs = remainingSeconds % 60;
+    display.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
 
-            if (recognition) {
-                try {
-                    recognition.stop();
-                } catch (e) {}
-            }
+  function toggleTimer() {
+    if (timerId) {
+      pauseTimer();
+    } else {
+      startTimer();
+    }
+  }
 
-            // 音声認識テキストを AI に読ませる（シミュレーション処理）
-            setTimeout(() => {
-                processTextWithAI(sttResult.textContent);
-            }, 800);
-        }
+  function startTimer() {
+    if (!videoStream) startCamera();
+    if (recognition) {
+      try { recognition.start(); } catch(e){}
+    }
 
-        // 認識されたテキストをAIが処理する関数
-        function processTextWithAI(text) {
-            if (!text || text === '音声を聞き取っています...' || text.trim() === '') {
-                statusText.textContent = '音声が検出されませんでした。';
-                aiResponse.textContent = '（音声がありませんでした）';
-                return;
-            }
+    startBtn.textContent = '一時停止';
+    startBtn.style.background = '#eab308';
+    startBtn.style.color = '#422006';
 
-            statusText.textContent = 'AIの分析完了';
+    timerId = setInterval(() => {
+      remainingSeconds--;
+      totalTicks++;
+      updateDisplay();
 
-            // 擬似的なAIレスポンス（API接続も可能）
-            const responses = [
-                `AI: 「${text}」という独り言を記録しました。とても興味深いアイデアですね！`,
-                `AI: 了解しました。「${text}」についてのメモをデータベースに保存しました。`,
-                `AI分析: 「${text}」→ 思考が整理されています。関連タスクを追加しますか？`
-            ];
-            const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-            aiResponse.textContent = randomResponse;
-        }
+      // 毎秒グラフ更新
+      addChartData(latestConcentrationScore);
 
+      // 1分ごとのチャイム
+      if (remainingSeconds > 0 && remainingSeconds % 60 === 0) {
+        playSchoolPipipi();
+      }
 
-        // ==========================================
-        // 2. 顔認識・顔変身（Webcam + ARマスク描画）
-        // ==========================================
-        const webcam = document.getElementById('webcam');
-        const canvas = document.getElementById('arCanvas');
-        const ctx = canvas.getContext('2d');
-        const toggleCamBtn = document.getElementById('toggleCamBtn');
-        const maskSelect = document.getElementById('maskSelect');
+      if (remainingSeconds <= 0) {
+        finishTimer();
+      }
+    }, 1000);
+  }
 
-        let isCameraOn = false;
-        let animationFrameId = null;
+  function pauseTimer() {
+    clearInterval(timerId);
+    timerId = null;
+    startBtn.textContent = '再開';
+    startBtn.style.background = '#22c55e';
+    startBtn.style.color = '#052e16';
+  }
 
-        toggleCamBtn.addEventListener('click', async () => {
-            if (isCameraOn) {
-                stopCamera();
-            } else {
-                await startCamera();
-            }
-        });
+  function resetTimer() {
+    pauseTimer();
+    remainingSeconds = totalSeconds;
+    updateDisplay();
+    scoreHistory = [];
+    speechLogs = [];
+    categoryCounts = { thinking: 0, understood: 0, question: 0, offtopic: 0 };
+    if (chart) {
+      chart.data.labels = [];
+      chart.data.datasets[0].data = [];
+      chart.update();
+    }
+    startBtn.textContent = 'スタート';
+    startBtn.style.background = '#dc2626';
+    startBtn.style.color = '#ffffff';
+  }
 
-        async function startCamera() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { width: 640, height: 480 }
-                });
-                webcam.srcObject = stream;
-                isCameraOn = true;
-                toggleCamBtn.textContent = 'カメラ停止';
+  function setPreset(mins) {
+    totalSeconds = mins * 60;
+    document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    resetTimer();
+  }
 
-                webcam.onloadedmetadata = () => {
-                    canvas.width = webcam.videoWidth;
-                    canvas.height = webcam.videoHeight;
-                    drawAROverlay();
-                };
-            } catch (err) {
-                alert('カメラへのアクセスが拒否されたか、利用できません。');
-            }
-        }
+  function finishTimer() {
+    pauseTimer();
+    playFinishSound();
 
-        function stopCamera() {
-            if (webcam.srcObject) {
-                webcam.srcObject.getTracks().forEach(track => track.stop());
-            }
-            isCameraOn = false;
-            toggleCamBtn.textContent = 'カメラ起動';
-            cancelAnimationFrame(animationFrameId);
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
+    if (typeof confetti === 'function') {
+      confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+    }
 
-        // Face Detection (ブラウザ標準FaceDetectorまたはCanvasオーバーレイ)
-        async function drawAROverlay() {
-            if (!isCameraOn) return;
+    showSummaryReport();
+  }
 
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // 📊 要約レポートの計算 & 表示
+  function showSummaryReport() {
+    const modal = document.getElementById('summaryModal');
+    const finalScoreDisplay = document.getElementById('finalScoreDisplay');
+    const scoreEvalText = document.getElementById('scoreEvalText');
+    const postureSummary = document.getElementById('postureSummary');
+    const writingSummary = document.getElementById('writingSummary');
+    const speechSummary = document.getElementById('speechSummary');
+    const speechLogList = document.getElementById('speechLogList');
 
-            // 顔検出（Shape Detection APIに対応しているブラウザの場合）
-            let faceFound = false;
-            let faceX = canvas.width / 2 - 100;
-            let faceY = canvas.height / 2 - 120;
-            let faceWidth = 200;
-            let faceHeight = 240;
+    // 総合スコア計算
+    const avgScore = scoreHistory.length > 0 ? Math.round(scoreHistory.reduce((a, b) => a + b, 0) / scoreHistory.length) : 85;
+    finalScoreDisplay.textContent = avgScore;
 
-            if ('FaceDetector' in window) {
-                try {
-                    const faceDetector = new FaceDetector({ fastMode: true });
-                    const faces = await faceDetector.detect(webcam);
-                    if (faces.length > 0) {
-                        const box = faces[0].boundingBox;
-                        faceX = box.x;
-                        faceY = box.y;
-                        faceWidth = box.width;
-                        faceHeight = box.height;
-                        faceFound = true;
-                    }
-                } catch (e) {
-                    // API未対応時は中央固定
-                }
-            }
+    if (avgScore >= 80) scoreEvalText.textContent = "🦸‍♂️ ヒーロー級の驚異的な集中力です！";
+    else if (avgScore >= 60) scoreEvalText.textContent = "👍 良好な集中度を維持できました。";
+    else scoreEvalText.textContent = "⚠️ 少し疲れが見られます。小休憩を挟みましょう。";
 
-            // 選択されたマスクを描画
-            const selectedMask = maskSelect.value;
-            if (selectedMask === 'spiderman') {
-                drawSpidermanMask(faceX, faceY, faceWidth, faceHeight);
-            } else if (selectedMask === 'cyber') {
-                drawCyberMask(faceX, faceY, faceWidth, faceHeight);
-            } else if (selectedMask === 'anon') {
-                drawAnonMask(faceX, faceY, faceWidth, faceHeight);
-            }
+    // 姿勢・筆記分析
+    postureSummary.textContent = `・正面・手元視線の維持率: ${Math.min(100, Math.round(avgScore * 1.05))}%`;
+    const writingRatio = totalTicks > 0 ? Math.round((writingDetectCount / totalTicks) * 100) : 0;
+    writingSummary.textContent = `・アクティブ筆記・作業時間割合: ${writingRatio}%`;
 
-            animationFrameId = requestAnimationFrame(drawAROverlay);
-        }
+    // 思考・独り言分析
+    const totalSpeech = speechLogs.length;
+    speechSummary.textContent = `・全発話数: ${totalSpeech}回（思考: ${categoryCounts.thinking} / 理解: ${categoryCounts.understood} / 疑問: ${categoryCounts.question} / 脱線: ${categoryCounts.offtopic}）`;
 
-        // 🕷️ スパイダーマンマスクの描画ロジック
-        function drawSpidermanMask(x, y, w, h) {
-            ctx.save();
-            
-            // 赤いマスクベース
-            ctx.fillStyle = '#dc2626';
-            ctx.beginPath();
-            ctx.ellipse(x + w/2, y + h/2, w/2, h/1.8, 0, 0, Math.PI * 2);
-            ctx.fill();
+    // ログリストの生成
+    speechLogList.innerHTML = '';
+    if (speechLogs.length === 0) {
+      speechLogList.innerHTML = '<div style="color:#6b7280; text-align:center;">発話ログはありませんでした</div>';
+    } else {
+      speechLogs.forEach(log => {
+        const item = document.createElement('div');
+        item.className = 'log-item';
+        
+        let tagHtml = '';
+        if (log.category === 'thinking') tagHtml = '<span style="color:#38bdf8;">[思考]</span>';
+        else if (log.category === 'understood') tagHtml = '<span style="color:#4ade80;">[理解]</span>';
+        else if (log.category === 'question') tagHtml = '<span style="color:#facc15;">[疑問]</span>';
+        else if (log.category === 'offtopic') tagHtml = '<span style="color:#f87171;">[脱線]</span>';
 
-            // 蜘蛛の巣模様（ライン）
-            ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            // 放射状の線
-            for (let i = 0; i < 8; i++) {
-                const angle = (i * Math.PI) / 4;
-                ctx.moveTo(x + w/2, y + h/2);
-                ctx.lineTo(x + w/2 + (w/2) * Math.cos(angle), y + h/2 + (h/1.8) * Math.sin(angle));
-            }
-            ctx.stroke();
+        item.innerHTML = `
+          <div><strong style="color:#9ca3af;">${log.time}</strong> ${tagHtml} ${log.text}</div>
+          ${log.advice ? `<div style="font-size:0.75rem; color:#0284c7; margin-left:12px;">└ ${log.advice}</div>` : ''}
+        `;
+        speechLogList.appendChild(item);
+      });
+    }
 
-            // 巨大な目の特徴（左目 & 右目）
-            const drawEye = (centerX, centerY) => {
-                ctx.fillStyle = '#ffffff';
-                ctx.strokeStyle = '#000000';
-                ctx.lineWidth = 8;
-                ctx.beginPath();
-                ctx.moveTo(centerX - w*0.15, centerY - h*0.05);
-                ctx.quadraticCurveTo(centerX, centerY - h*0.18, centerX + w*0.15, centerY - h*0.05);
-                ctx.quadraticCurveTo(centerX + w*0.05, centerY + h*0.12, centerX - w*0.15, centerY - h*0.05);
-                ctx.fill();
-                ctx.stroke();
-            };
+    modal.style.display = 'flex';
+  }
 
-            drawEye(x + w*0.3, y + h*0.4);
-            drawEye(x + w*0.7, y + h*0.4);
+  function closeModal() {
+    document.getElementById('summaryModal').style.display = 'none';
+  }
 
-            ctx.restore();
-        }
-
-        // 🤖 サイバーマスク
-        function drawCyberMask(x, y, w, h) {
-            ctx.save();
-            ctx.fillStyle = 'rgba(14, 165, 233, 0.8)';
-            ctx.fillRect(x + w*0.1, y + h*0.3, w*0.8, h*0.25);
-            ctx.strokeStyle = '#38bdf8';
-            ctx.lineWidth = 4;
-            ctx.strokeRect(x + w*0.05, y + h*0.25, w*0.9, h*0.35);
-            ctx.restore();
-        }
-
-        // 🎭 映画風仮面
-        function drawAnonMask(x, y, w, h) {
-            ctx.save();
-            ctx.fillStyle = '#f8fafc';
-            ctx.beginPath();
-            ctx.ellipse(x + w/2, y + h/2, w/2.2, h/1.9, 0, 0, Math.PI * 2);
-            ctx.fill();
-            // ひげ
-            ctx.fillStyle = '#000';
-            ctx.fillRect(x + w*0.35, y + h*0.7, w*0.3, h*0.05);
-            ctx.restore();
-        }
-    </script>
+  // 初期化実行
+  window.addEventListener('DOMContentLoaded', () => {
+    initChart();
+    updateDisplay();
+  });
+</script>
 </body>
 </html>
