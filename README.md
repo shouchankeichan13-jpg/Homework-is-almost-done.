@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>多角解析 宿題集中タイマー</title>
+  <title>多角解析 勉強集中タイマー & 独り言AIレポート</title>
   <!-- 🎉 クラッカー紙吹雪 -->
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
   <!-- 📈 リアルタイムグラフ (Chart.js) -->
@@ -33,10 +33,11 @@
       border-radius: 24px;
       padding: 28px 24px;
       width: 100%;
-      max-width: 500px;
+      max-width: 520px;
       text-align: center;
       box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
       border: 2px solid #334155;
+      position: relative;
     }
     h1 {
       font-size: 1.3rem;
@@ -44,10 +45,34 @@
       color: #93c5fd;
       letter-spacing: 0.05em;
     }
+
+    /* 勉強テーマ入力欄 */
+    .topic-container {
+      margin-bottom: 12px;
+      text-align: left;
+    }
+    .topic-container label {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      font-weight: bold;
+      display: block;
+      margin-bottom: 4px;
+    }
+    .topic-input {
+      width: 100%;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid #475569;
+      background: #0f172a;
+      color: #38bdf8;
+      font-size: 0.95rem;
+      font-weight: bold;
+    }
+
     .face-landmarkers-container {
       position: relative;
       width: 100%;
-      height: 220px;
+      height: 200px;
       margin-bottom: 12px;
       background: #020617;
       border-radius: 16px;
@@ -57,15 +82,11 @@
       justify-content: center;
       align-items: center;
     }
-    #video {
-      display: none;
-    }
+    #video { display: none; }
     #faceCanvas {
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
       transform: scaleX(-1);
     }
     .status-badge {
@@ -73,9 +94,9 @@
       bottom: 10px;
       left: 50%;
       transform: translateX(-50%);
-      padding: 6px 16px;
+      padding: 6px 14px;
       border-radius: 16px;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       font-weight: bold;
       background: rgba(15, 23, 42, 0.85);
       border: 1px solid #0284c7;
@@ -103,11 +124,30 @@
       background: rgba(22, 101, 52, 0.4);
     }
 
+    /* リアルタイム独り言テロップ */
+    .speech-box {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 8px;
+      font-size: 0.85rem;
+      color: #cbd5e1;
+      margin-bottom: 12px;
+      min-height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .speech-box span {
+      color: #38bdf8;
+      font-weight: bold;
+    }
+
     .display {
-      font-size: 4.5rem;
+      font-size: 4.2rem;
       font-weight: 800;
       font-family: 'Courier New', Courier, monospace;
-      margin: 4px 0;
+      margin: 2px 0;
       color: #4ade80;
       transition: color 0.3s ease;
     }
@@ -116,7 +156,7 @@
       padding: 4px 14px;
       border-radius: 16px;
       background: #334155;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       font-weight: 600;
       margin-bottom: 12px;
       color: #cbd5e1;
@@ -125,10 +165,10 @@
     .chart-container {
       position: relative;
       width: 100%;
-      height: 100px;
-      margin-bottom: 16px;
+      height: 90px;
+      margin-bottom: 14px;
       background: #0f172a;
-      padding: 8px;
+      padding: 6px;
       border-radius: 12px;
       border: 1px solid #1e293b;
     }
@@ -138,7 +178,6 @@
       justify-content: center;
       gap: 6px;
       margin-bottom: 12px;
-      flex-wrap: wrap;
     }
     .preset-btn {
       background: #334155;
@@ -148,39 +187,11 @@
       border-radius: 8px;
       cursor: pointer;
       font-weight: bold;
-      font-size: 0.9rem;
-      transition: all 0.2s;
+      font-size: 0.85rem;
     }
-    .preset-btn:hover, .preset-btn.active {
+    .preset-btn.active {
       background: #3b82f6;
       color: #ffffff;
-    }
-    .time-setter {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      margin-bottom: 18px;
-      background: #0f172a;
-      padding: 8px;
-      border-radius: 12px;
-      border: 1px solid #334155;
-    }
-    .time-setter label {
-      font-size: 0.85rem;
-      color: #94a3b8;
-      font-weight: bold;
-    }
-    .custom-input {
-      width: 55px;
-      padding: 6px;
-      border-radius: 6px;
-      border: 1px solid #475569;
-      background: #1e293b;
-      color: #ffffff;
-      text-align: center;
-      font-size: 1rem;
-      font-weight: bold;
     }
     .controls {
       display: flex;
@@ -192,40 +203,113 @@
       padding: 12px;
       border: none;
       border-radius: 12px;
-      font-size: 1.05rem;
+      font-size: 1rem;
       font-weight: bold;
       cursor: pointer;
-      transition: transform 0.1s, opacity 0.2s;
-    }
-    .btn:active {
-      transform: scale(0.96);
     }
     .btn-start { background: #22c55e; color: #052e16; }
     .btn-pause { background: #eab308; color: #422006; }
     .btn-reset { background: #ef4444; color: #450a0a; }
 
-    .urgency-medium .display { color: #facc15; }
-    .urgency-high .display { color: #f97316; }
-    .urgency-critical .display {
-      color: #ef4444;
-      animation: pulse 0.5s infinite alternate;
+    /* 📊 終了時要約モーダル */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top:0; left:0; width:100%; height:100%;
+      background: rgba(0,0,0,0.8);
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      padding: 20px;
     }
-    @keyframes pulse {
-      from { opacity: 1; }
-      to { opacity: 0.3; }
+    .modal-content {
+      background: #1e293b;
+      border-radius: 20px;
+      padding: 24px;
+      max-width: 480px;
+      width: 100%;
+      border: 2px solid #38bdf8;
+      text-align: left;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal-title {
+      font-size: 1.4rem;
+      color: #38bdf8;
+      text-align: center;
+      margin-bottom: 16px;
+      font-weight: bold;
+    }
+    .score-box {
+      text-align: center;
+      background: #0f172a;
+      padding: 16px;
+      border-radius: 16px;
+      margin-bottom: 16px;
+      border: 1px solid #334155;
+    }
+    .score-number {
+      font-size: 3.5rem;
+      font-weight: 800;
+      color: #4ade80;
+    }
+    .summary-section {
+      margin-bottom: 14px;
+    }
+    .summary-section h3 {
+      font-size: 0.95rem;
+      color: #93c5fd;
+      margin-bottom: 6px;
+      border-bottom: 1px solid #334155;
+      padding-bottom: 4px;
+    }
+    .log-list {
+      background: #0f172a;
+      border-radius: 8px;
+      padding: 10px;
+      max-height: 120px;
+      overflow-y: auto;
+      font-size: 0.85rem;
+    }
+    .log-item {
+      color: #f87171;
+      margin-bottom: 6px;
+      padding-bottom: 4px;
+      border-bottom: 1px dashed #334155;
+    }
+    .log-item:last-child { border-bottom: none; }
+    .close-btn {
+      width: 100%;
+      padding: 10px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
 
-<div class="timer-card" id="card">
-  <h1>🧠 多角集中力解析タイマー</h1>
+<div class="timer-card">
+  <h1>🧠 独り言AI解析 集中タイマー</h1>
+
+  <div class="topic-container">
+    <label for="studyTopic">📝 今日の勉強テーマ（例: 数学の微分積分 / 英単語）</label>
+    <input type="text" id="studyTopic" class="topic-input" value="数学の微分積分">
+  </div>
 
   <div class="face-landmarkers-container">
     <div class="audio-indicator" id="audioIndicator">✏️ 筆記音: 未検知</div>
-    <div class="status-badge" id="statusBadge">カメラ・マイク未起動（スタートで要求）</div>
+    <div class="status-badge" id="statusBadge">カメラ・マイク未起動</div>
     <video id="video" playsinline></video>
     <canvas id="faceCanvas"></canvas>
+  </div>
+
+  <div class="speech-box" id="speechBox">
+    🗣️ 独り言検知: <span id="speechText">（待機中…）</span>
   </div>
 
   <div class="display" id="display">10:00</div>
@@ -236,17 +320,10 @@
   </div>
 
   <div class="presets">
-    <button class="preset-btn" data-min="1" data-sec="0" onclick="handlePresetClick(this)">1分</button>
-    <button class="preset-btn" data-min="3" data-sec="0" onclick="handlePresetClick(this)">3分</button>
-    <button class="preset-btn" data-min="5" data-sec="0" onclick="handlePresetClick(this)">5分</button>
-    <button class="preset-btn active" data-min="10" data-sec="0" onclick="handlePresetClick(this)">10分</button>
-  </div>
-
-  <div class="time-setter">
-    <input type="number" id="customMin" class="custom-input" value="10" min="0" max="180" oninput="setCustomTime()">
-    <label for="customMin">分</label>
-    <input type="number" id="customSec" class="custom-input" value="0" min="0" max="59" oninput="setCustomTime()">
-    <label for="customSec">秒</label>
+    <button class="preset-btn" onclick="setPreset(1)">1分</button>
+    <button class="preset-btn" onclick="setPreset(3)">3分</button>
+    <button class="preset-btn" onclick="setPreset(5)">5分</button>
+    <button class="preset-btn active" onclick="setPreset(10)">10分</button>
   </div>
 
   <div class="controls">
@@ -255,18 +332,48 @@
   </div>
 </div>
 
+<!-- 📊 終了時要約レポート モーダル -->
+<div class="modal-overlay" id="summaryModal">
+  <div class="modal-content">
+    <div class="modal-title">🎓 学習集中度 要約レポート</div>
+
+    <div class="score-box">
+      <div style="font-size:0.85rem; color:#94a3b8;">総合集中スコア</div>
+      <div class="score-number" id="finalScoreDisplay">88</div>
+      <div id="scoreEvalText" style="font-size:0.9rem; color:#38bdf8;">素晴らしい集中力でした！</div>
+    </div>
+
+    <div class="summary-section">
+      <h3>📈 集中度の内訳</h3>
+      <p id="postureSummary" style="font-size:0.85rem; color:#cbd5e1; margin-bottom:4px;"></p>
+      <p id="writingSummary" style="font-size:0.85rem; color:#cbd5e1;"></p>
+    </div>
+
+    <div class="summary-section">
+      <h3>💬 無関係な独り言・脱線ログ</h3>
+      <div class="log-list" id="irrelevantLogList">
+        <!-- JSで動的挿入 -->
+      </div>
+    </div>
+
+    <button class="close-btn" onclick="closeModal()">閉じる</button>
+  </div>
+</div>
+
 <script>
   let totalSeconds = 600;
   let remainingSeconds = 600;
   let timerId = null;
 
-  // Web Audio API & マイク入力
+  // Web Audio & マイク
   let audioCtx = null;
   let micStream = null;
   let analyser = null;
   let isPenSoundDetected = false;
+  let writingDetectCount = 0;
+  let totalTicks = 0;
 
-  // 顔認識 & 分析
+  // 顔認識 & スコア履歴
   let faceMesh = null;
   let videoStream = null;
   let latestConcentrationScore = 100;
@@ -274,20 +381,94 @@
   let scoreHistory = [];
   let chart = null;
 
+  // 🗣️ 音声認識 & 独り言解析
+  let recognition = null;
+  let irrelevantSpeechLogs = []; // 無関係な発話ログ [{ time: "08:12", text: "..." }]
+  let totalSpeechCount = 0;
+  let irrelevantSpeechCount = 0;
+
   const video = document.getElementById('video');
   const faceCanvas = document.getElementById('faceCanvas');
   const faceCtx = faceCanvas.getContext('2d');
   const statusBadge = document.getElementById('statusBadge');
   const audioIndicator = document.getElementById('audioIndicator');
+  const speechText = document.getElementById('speechText');
 
   const display = document.getElementById('display');
   const intervalBadge = document.getElementById('intervalBadge');
   const startBtn = document.getElementById('startBtn');
-  const card = document.getElementById('card');
-  const customMinInput = document.getElementById('customMin');
-  const customSecInput = document.getElementById('customSec');
+  const studyTopicInput = document.getElementById('studyTopic');
 
-  // スクールタイマー風「ピピッ」音
+  // 無関係な発話を検出するためのNG判定フレーズ（日常会話・脱線ワード）
+  const NG_WORDS = ["お腹減った", "お腹すいた", "眠い", "だるい", "ゲーム", "漫画", "マンガ", "遊ぶ", "スマホ", "Youtube", "ねむい", "どこか行く", "帰りたい", "めんどくさい", "疲れ"];
+
+  // 音声認識（SpeechRecognition）の初期化
+  function initSpeechRecognition() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      speechText.textContent = "※お使いのブラウザは音声認識非対応です";
+      return;
+    }
+
+    recognition = new SpeechRecognition();
+    recognition.lang = 'ja-JP';
+    recognition.continuous = true;
+    recognition.interimResults = false;
+
+    recognition.onresult = (event) => {
+      const lastIndex = event.results.length - 1;
+      const transcript = event.results[lastIndex][0].transcript.trim();
+      speechText.textContent = `「${transcript}」`;
+
+      analyzeSpeechRelevance(transcript);
+    };
+
+    recognition.onerror = (err) => {
+      console.warn("音声認識エラー:", err.error);
+    };
+
+    recognition.onend = () => {
+      // タイマー作動中なら再起動
+      if (timerId && recognition) {
+        try { recognition.start(); } catch(e){}
+      }
+    };
+  }
+
+  // 独り言の関連性判定（AI / キーワードエンジン）
+  function analyzeSpeechRelevance(text) {
+    totalSpeechCount++;
+    const topic = studyTopicInput.value.trim();
+
+    // 1. NGワード（雑談・愚痴）が含まれているか
+    const containsNG = NG_WORDS.some(word => text.includes(word));
+
+    // 2. 勉強テーマのキーワードが含まれているか（簡易マッチ）
+    const topicKeywords = topic.split(/[\s　]+/);
+    const containsTopic = topicKeywords.some(kw => kw.length > 1 && text.includes(kw));
+
+    // 無関係と判定される条件: NGワードを含む、あるいはテーマと一切無関係な短い単語
+    let isIrrelevant = false;
+    if (containsNG) {
+      isIrrelevant = true;
+    } else if (!containsTopic && text.length > 4) {
+      // テーマ単語を含まず、かつ勉強用のつぶやき（「なるほど」「OK」「ここか」等）でもない場合
+      const studyPhrases = ["なるほど", "わかった", "つまり", "こうして", "次は", "えーと", "答え", "計算", "確認"];
+      const isStudyPhrase = studyPhrases.some(p => text.includes(p));
+      if (!isStudyPhrase) isIrrelevant = true;
+    }
+
+    if (isIrrelevant) {
+      irrelevantSpeechCount++;
+      const timeStr = display.textContent;
+      irrelevantSpeechLogs.push({ time: timeStr, text: text });
+      speechText.style.color = "#f87171"; // 赤文字警告
+    } else {
+      speechText.style.color = "#38bdf8"; // 青文字
+    }
+  }
+
+  // スクールタイマー音
   function playSchoolPipipi() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -324,12 +505,6 @@
       osc.start(now + idx * 0.12);
       osc.stop(now + idx * 0.12 + 0.3);
     });
-  }
-
-  function fireConfetti() {
-    if (typeof confetti === 'function') {
-      confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
-    }
   }
 
   // 📈 Chart.js グラフ初期化
@@ -376,7 +551,7 @@
     chart.update('none');
   }
 
-  // 🎙️ マイク音響解析（シャーペン音・ノック音・高音域クリックノイズ検出）
+  // 🎙️ マイク音響解析
   async function initMicrophone() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') await audioCtx.resume();
@@ -390,7 +565,6 @@
 
       analyzeAudioLoop();
     } catch (err) {
-      console.warn("マイクのアクセスが許可されませんでした", err);
       audioIndicator.textContent = "🎙️ マイク無効";
     }
   }
@@ -401,20 +575,17 @@
     const dataArray = new Uint8Array(analyser.frequencyBinCount);
     analyser.getByteFrequencyData(dataArray);
 
-    // 高音域帯（シャーペンのカチャカチャ音・筆記擦れ音 3kHz〜8kHz 付近）の強度計算
     let highFreqSum = 0;
     const startIndex = Math.floor(dataArray.length * 0.35);
     const endIndex = Math.floor(dataArray.length * 0.85);
 
-    for (let i = startIndex; i < endIndex; i++) {
-      highFreqSum += dataArray[i];
-    }
+    for (let i = startIndex; i < endIndex; i++) highFreqSum += dataArray[i];
     const avgHighFreq = highFreqSum / (endIndex - startIndex);
 
-    // カチャカチャ音が一定以上の高周波スパイクを持った場合
     if (avgHighFreq > 35) {
       isPenSoundDetected = true;
-      audioIndicator.textContent = "✏️ 筆記音・作業音検知中";
+      writingDetectCount++;
+      audioIndicator.textContent = "✏️ 筆記音検知中";
       audioIndicator.classList.add('active');
     } else {
       isPenSoundDetected = false;
@@ -425,7 +596,7 @@
     if (timerId) requestAnimationFrame(analyzeAudioLoop);
   }
 
-  // 👤 MediaPipe FaceMesh & 姿勢・表情・居眠り判定
+  // 👤 MediaPipe FaceMesh
   function initFaceMesh() {
     if (typeof FaceMesh === 'undefined') return;
     faceMesh = new FaceMesh({
@@ -442,64 +613,34 @@
     faceMesh.onResults(onFaceResults);
   }
 
-  function calculateAdvancedConcentration(lm) {
-    // 1. 顔のピッチ（上下角度）: 額(10)と顎(152)に対する鼻(1)の相対位置
+  function calculateConcentration(lm) {
     const forehead = lm[10].y;
     const chin = lm[152].y;
     const noseY = lm[1].y;
     const faceHeight = Math.abs(chin - forehead) || 0.001;
     const noseRelY = (noseY - forehead) / faceHeight;
 
-    let pitchScore = 0;
-    let pitchStatus = "適正";
+    let pitchScore = 80;
+    let pitchStatus = "正面向き";
 
-    // 0.55付近が正面。0.60〜0.72 付近が「適度な下向き（ノート集中）」
     if (noseRelY >= 0.58 && noseRelY <= 0.75) {
-      pitchScore = 100; // 適度に下を向いている（最も良い集中状態）
+      pitchScore = 100;
       pitchStatus = "ノート集中（適度な下向き）";
     } else if (noseRelY < 0.52) {
-      pitchScore = 30;  // 上を向きすぎ（よそ見）
+      pitchScore = 30;
       pitchStatus = "上向き（よそ見）";
     } else if (noseRelY > 0.82) {
-      pitchScore = 20;  // 下を向きすぎ（うつ伏せ・居眠り）
+      pitchScore = 20;
       pitchStatus = "うつ伏せ傾向";
-    } else {
-      pitchScore = 80;  // 正面付近
-      pitchStatus = "正面向き";
     }
 
-    // 2. 左右向き（Yaw）: 左右頬(234, 454)に対する鼻(1)の位置
-    const leftCheek = lm[234].x;
-    const rightCheek = lm[454].x;
     const noseX = lm[1].x;
-    const faceWidth = Math.abs(rightCheek - leftCheek) || 0.001;
-    const noseRelX = (noseX - leftCheek) / faceWidth;
-    const yawOffset = Math.abs(noseRelX - 0.5);
+    const faceWidth = Math.abs(lm[454].x - lm[234].x) || 0.001;
+    const yawOffset = Math.abs((noseX - lm[234].x) / faceWidth - 0.5);
+    let yawScore = Math.max(0, 100 - yawOffset * 300);
 
-    let yawScore = Math.max(0, 100 - yawOffset * 300); // 横を向くほどスコア低下
-
-    // 3. 目の開き（EAR: 居眠り検知）
-    const leftVert = Math.hypot(lm[159].x - lm[145].x, lm[159].y - lm[145].y);
-    const leftHoriz = Math.hypot(lm[33].x - lm[133].x, lm[33].y - lm[133].y);
-    const earLeft = leftVert / (leftHoriz + 0.0001);
-
-    const rightVert = Math.hypot(lm[386].x - lm[374].x, lm[386].y - lm[374].y);
-    const rightHoriz = Math.hypot(lm[362].x - lm[263].x, lm[362].y - lm[263].y);
-    const earRight = rightVert / (rightHoriz + 0.0001);
-
-    const avgEar = (earLeft + earRight) / 2;
-    let eyeScore = 100;
-    if (avgEar < 0.12) {
-      eyeScore = 10; // 目を閉じている（眠気/居眠り）
-      pitchStatus = "居眠り・閉眼検知";
-    }
-
-    // 4. シャーペン音・筆記音ボーナス補正
     let soundBonus = isPenSoundDetected ? 15 : 0;
-
-    // 総合判定算出
-    let baseScore = (pitchScore * 0.45 + yawScore * 0.35 + eyeScore * 0.20) + soundBonus;
-    let targetScore = Math.min(100, Math.max(0, baseScore));
+    let targetScore = Math.min(100, Math.max(0, (pitchScore * 0.6 + yawScore * 0.4) + soundBonus));
 
     smoothedScore = smoothedScore * 0.7 + targetScore * 0.3;
     return { score: smoothedScore, status: pitchStatus };
@@ -519,7 +660,6 @@
     if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
       const landmarks = results.multiFaceLandmarks[0];
 
-      // 顔認識ポイント（ドットメッシュ）の描画
       faceCtx.fillStyle = '#38bdf8';
       for (let i = 0; i < landmarks.length; i += 5) {
         const x = landmarks[i].x * faceCanvas.width;
@@ -529,17 +669,14 @@
         faceCtx.fill();
       }
 
-      // 集中度スコア計算
-      const { score, status } = calculateAdvancedConcentration(landmarks);
+      const { score, status } = calculateConcentration(landmarks);
       latestConcentrationScore = score;
 
       const rounded = Math.round(score);
       statusBadge.textContent = `🎯 集中度: ${rounded}% (${status})`;
       statusBadge.style.borderColor = rounded >= 70 ? '#22c55e' : rounded >= 40 ? '#facc15' : '#ef4444';
       statusBadge.style.color = rounded >= 70 ? '#4ade80' : rounded >= 40 ? '#facc15' : '#f87171';
-
     } else {
-      // 顔非検出 ＝ 立席 / 画面外
       latestConcentrationScore = 0;
       smoothedScore = 0;
       statusBadge.textContent = `🚶 離席・顔が検出されません (0%)`;
@@ -553,10 +690,6 @@
     initFaceMesh();
     initMicrophone();
 
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      statusBadge.textContent = "⚠️ メディア機能非対応";
-      return;
-    }
     try {
       videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
       video.srcObject = videoStream;
@@ -570,51 +703,28 @@
       }
       processVideo();
     } catch (err) {
-      statusBadge.textContent = "❌ カメラへのアクセスが拒否されました";
+      statusBadge.textContent = "❌ カメラアクセス拒否";
     }
   }
 
   function stopCamera() {
     if (videoStream) {
       videoStream.getTracks().forEach(track => track.stop());
-      video.srcObject = null;
       videoStream = null;
     }
     if (micStream) {
       micStream.getTracks().forEach(track => track.stop());
       micStream = null;
     }
-    statusBadge.textContent = "カメラ・マイク停止中";
-    statusBadge.style.borderColor = "#0284c7";
-    statusBadge.style.color = "#38bdf8";
-    faceCtx.clearRect(0, 0, faceCanvas.width, faceCanvas.height);
-  }
-
-  function getBeepInterval(rem) {
-    if (rem > 120) return 60;
-    if (rem > 60)  return 30;
-    if (rem > 30)  return 15;
-    if (rem > 15)  return 10;
-    if (rem > 5)   return 5;
-    return 1;
+    if (recognition) {
+      try { recognition.stop(); } catch(e){}
+    }
   }
 
   function updateDisplay() {
     const m = Math.floor(remainingSeconds / 60);
     const s = remainingSeconds % 60;
     display.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-
-    const interval = getBeepInterval(remainingSeconds);
-    if (remainingSeconds > 0) {
-      intervalBadge.textContent = `通知間隔: ${interval}秒おき`;
-    } else {
-      intervalBadge.textContent = `🎉 タイムアップ！お疲れ様！ 🎉`;
-    }
-
-    card.classList.remove('urgency-medium', 'urgency-high', 'urgency-critical');
-    if (remainingSeconds <= 5) card.classList.add('urgency-critical');
-    else if (remainingSeconds <= 30) card.classList.add('urgency-high');
-    else if (remainingSeconds <= 120) card.classList.add('urgency-medium');
   }
 
   function tick() {
@@ -624,23 +734,20 @@
       startBtn.textContent = 'スタート';
       startBtn.className = 'btn btn-start';
       playFinishSound();
-      fireConfetti();
-      updateDisplay();
+      if (typeof confetti === 'function') confetti({ particleCount: 150, spread: 80 });
+      showSummaryReport();
       stopCamera();
       return;
     }
 
     remainingSeconds--;
+    totalTicks++;
     updateDisplay();
-
-    // グラフ更新
     addChartData(latestConcentrationScore);
 
-    // スクールタイマー音
-    const interval = getBeepInterval(remainingSeconds);
-    if (remainingSeconds > 0 && remainingSeconds % interval === 0) {
-      playSchoolPipipi();
-    }
+    const rem = remainingSeconds;
+    const interval = rem > 120 ? 60 : rem > 60 ? 30 : rem > 30 ? 15 : rem > 5 ? 5 : 1;
+    if (rem > 0 && rem % interval === 0) playSchoolPipipi();
   }
 
   function toggleTimer() {
@@ -659,6 +766,12 @@
       startBtn.className = 'btn btn-pause';
       playSchoolPipipi();
       startCamera();
+
+      // 音声認識スタート
+      if (!recognition) initSpeechRecognition();
+      if (recognition) {
+        try { recognition.start(); } catch(e){}
+      }
     }
   }
 
@@ -668,33 +781,70 @@
       timerId = null;
     }
     remainingSeconds = totalSeconds;
+    totalTicks = 0;
+    writingDetectCount = 0;
+    irrelevantSpeechLogs = [];
+    totalSpeechCount = 0;
+    irrelevantSpeechCount = 0;
+
     startBtn.textContent = 'スタート';
     startBtn.className = 'btn btn-start';
     scoreHistory = [];
     chart.data.labels = [];
     chart.data.datasets[0].data = [];
     chart.update('none');
+    speechText.textContent = "（待機中…）";
     updateDisplay();
     stopCamera();
   }
 
-  function handlePresetClick(btn) {
+  function setPreset(min) {
     document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    const min = parseInt(btn.dataset.min);
-    const sec = parseInt(btn.dataset.sec);
-    customMinInput.value = min;
-    customSecInput.value = sec;
-    totalSeconds = min * 60 + sec;
+    event.target.classList.add('active');
+    totalSeconds = min * 60;
     resetTimer();
   }
 
-  function setCustomTime() {
-    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
-    const min = parseInt(customMinInput.value) || 0;
-    const sec = parseInt(customSecInput.value) || 0;
-    totalSeconds = min * 60 + sec;
-    resetTimer();
+  // 📊 最終要約レポート＆総合スコアの表示
+  function showSummaryReport() {
+    const avgScore = scoreHistory.length > 0
+      ? Math.round(scoreHistory.reduce((a, b) => a + b, 0) / scoreHistory.length)
+      : 80;
+
+    // 独り言による減点 (無関係な発言1回につき-5点)
+    const speechPenalty = irrelevantSpeechCount * 5;
+    const finalScore = Math.max(0, Math.min(100, avgScore - speechPenalty));
+
+    document.getElementById('finalScoreDisplay').textContent = finalScore;
+
+    const evalElem = document.getElementById('scoreEvalText');
+    if (finalScore >= 85) evalElem.textContent = "🎉 素晴らしい集中力でした！大変よくできました。";
+    else if (finalScore >= 60) evalElem.textContent = "👍 概ね集中できていました。脱線に気をつけましょう。";
+    else evalElem.textContent = "⚠️ 姿勢の乱れや無関係な独り言が多く見られました。次頑張ろう！";
+
+    document.getElementById('postureSummary').textContent = `・姿勢・視線安定度: 平均 ${avgScore} 点`;
+    const writingRatio = totalTicks > 0 ? Math.round((writingDetectCount / totalTicks) * 100) : 0;
+    document.getElementById('writingSummary').textContent = `・筆記音（作業量）検知割合: 時間の ${writingRatio}%`;
+
+    const logList = document.getElementById('irrelevantLogList');
+    logList.innerHTML = '';
+
+    if (irrelevantSpeechLogs.length === 0) {
+      logList.innerHTML = '<div style="color:#4ade80; text-align:center;">無関係な独り言はありませんでした！👏</div>';
+    } else {
+      irrelevantSpeechLogs.forEach(log => {
+        const item = document.createElement('div');
+        item.className = 'log-item';
+        item.textContent = `⏱️ [残り ${log.time}] 「${log.text}」`;
+        logList.appendChild(item);
+      });
+    }
+
+    document.getElementById('summaryModal').style.display = 'flex';
+  }
+
+  function closeModal() {
+    document.getElementById('summaryModal').style.display = 'none';
   }
 
   window.addEventListener('DOMContentLoaded', () => {
